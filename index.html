@@ -1,395 +1,882 @@
-import { useState, useMemo, useCallback, useRef, useEffect } from "react";
+<!DOCTYPE html>
+<html lang="ja">
 
-const DEFAULT_MEMBERS = [
-  { name: "パパ", birth: "1986-10-07", color: "#5B8DEF", fixed: true, visible: true },
-  { name: "ママ", birth: "1983-08-30", color: "#EF6B9B", fixed: true, visible: true },
-  { name: "ミコ", birth: "2021-11-20", color: "#F0C75E", fixed: true, visible: true },
-  { name: "クラ", birth: "2017-12-04", color: "#5EC79E", fixed: true, visible: true },
-];
-
-const COLORS = ["#9B59B6", "#E67E22", "#1ABC9C", "#E74C3C", "#95A5A6", "#2ECC71", "#3498DB"];
-const END_YEAR = 2080;
-const LIFESPAN = 80;
-const HUMAN_HISTORY_YEARS = 300000;
-
-function pD(s) { return new Date(s + "T00:00:00"); }
-function wkBetween(a, b) { return Math.floor((b - a) / 604800000); }
-
-function ageAt(bStr, d) {
-  const b = pD(bStr);
-  if (d < b) return null;
-  let y = d.getFullYear() - b.getFullYear();
-  let m = d.getMonth() - b.getMonth();
-  if (d.getDate() < b.getDate()) m--;
-  if (m < 0) { y--; m += 12; }
-  return { y, m };
-}
-
-function hexRgba(hex, a) {
-  const r = parseInt(hex.slice(1, 3), 16);
-  const g = parseInt(hex.slice(3, 5), 16);
-  const b = parseInt(hex.slice(5, 7), 16);
-  return `rgba(${r},${g},${b},${a})`;
-}
-
-function fmtDate(d) {
-  return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
-}
-
-export default function App() {
-  const [members, setMembers] = useState(DEFAULT_MEMBERS);
-  const [step, setStep] = useState(1);
-  const [selCell, setSelCell] = useState(null);
-  const [factsIdx, setFactsIdx] = useState(0);
-  const [form, setForm] = useState({ name: "", birth: "", color: COLORS[0] });
-  const [showAdd, setShowAdd] = useState(false);
-  const gridRef = useRef(null);
-  const containerRef = useRef(null);
-  const [mobile, setMobile] = useState(typeof window !== "undefined" && window.innerWidth < 640);
-  const [containerW, setContainerW] = useState(600);
-
-  useEffect(() => {
-    const h = () => setMobile(window.innerWidth < 640);
-    window.addEventListener("resize", h);
-    return () => window.removeEventListener("resize", h);
-  }, []);
-
-  useEffect(() => {
-    if (step === 2 && containerRef.current) {
-      const ro = new ResizeObserver(entries => {
-        for (const e of entries) setContainerW(e.contentRect.width);
-      });
-      ro.observe(containerRef.current);
-      return () => ro.disconnect();
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Life in weeks</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
     }
-  }, [step]);
 
-  const today = useMemo(() => new Date(), []);
-  const visibleMembers = useMemo(() => members.filter(m => m.visible), [members]);
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: #fafafa;
+    }
 
-  const { gridStart, totalYrs } = useMemo(() => {
-    const births = visibleMembers.length > 0
-      ? visibleMembers.map(m => pD(m.birth))
-      : members.map(m => pD(m.birth));
-    const oldest = new Date(Math.min(...births));
-    const sy = oldest.getFullYear();
-    return { gridStart: new Date(sy, 0, 1), totalYrs: END_YEAR - sy };
-  }, [visibleMembers, members]);
+    button {
+      font-family: inherit;
+    }
 
-  const todayWk = wkBetween(gridStart, today);
+    input {
+      font-family: inherit;
+    }
 
-  // Dynamic cell size: fill available width for 52 columns
-  const labelW = mobile ? 30 : 38;
-  const availW = containerW - labelW - 8;
-  const visCount = Math.max(visibleMembers.length, 1);
-  const baseCellSz = Math.floor(availW / 52) - 1;
-  const cellSz = Math.max(Math.min(baseCellSz, mobile ? 10 : 14), 2);
-  const gap = Math.max(Math.round(cellSz * 0.15), 1);
+    /* ===== モダンスライダースタイル ===== */
+    .facts-slider-wrap {
+      margin-top: 16px;
+      padding: 14px 16px;
+      background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
+      border-radius: 12px;
+      border: 1px solid #e8eeff;
+    }
 
-  const gridData = useMemo(() => {
-    const total = totalYrs * 52;
-    const arr = new Array(total);
-    for (let i = 0; i < total; i++) {
-      const wd = new Date(gridStart.getTime() + i * 604800000);
-      const alive = [];
-      for (let j = 0; j < visibleMembers.length; j++) {
-        if (pD(visibleMembers[j].birth) <= wd) alive.push(visibleMembers[j]);
+    .facts-slider-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .facts-slider-date {
+      font-size: 13px;
+      font-weight: 600;
+      color: #333;
+      letter-spacing: -0.3px;
+    }
+
+    .facts-slider-hint {
+      font-size: 11px;
+      color: #aaa;
+    }
+
+    /* rangeのカスタムスタイル */
+    #facts-range {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: #e0e4f0;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #facts-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid currentColor;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+
+    #facts-range::-webkit-slider-thumb:hover {
+      transform: scale(1.2);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+
+    #facts-range::-moz-range-thumb {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      background: #fff;
+      border: 2px solid currentColor;
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+      cursor: pointer;
+    }
+
+    .facts-slider-track-wrap {
+      position: relative;
+    }
+
+    .facts-slider-fill {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      height: 6px;
+      border-radius: 3px;
+      transform: translateY(-50%);
+      pointer-events: none;
+      transition: width 0.05s;
+      z-index: 0;
+      /* つまみの下に収める */
+    }
+
+    #facts-range {
+      position: relative;
+      z-index: 1;
+      /* fillより上に持ってくる */
+      background: transparent !important;
+      /* ブラウザデフォルトのトラックを非表示 */
+    }
+
+    /* ===== ホバーツールチップ ===== */
+    #cell-tooltip {
+      position: fixed;
+      background: rgba(26, 26, 26, 0.88);
+      color: #fff;
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 11px;
+      line-height: 1.6;
+      pointer-events: none;
+      white-space: nowrap;
+      backdrop-filter: blur(4px);
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      z-index: 9999;
+      display: none;
+      transition: opacity 0.1s;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="root"></div>
+  <!-- ホバーツールチップ（グリッド用・固定表示） -->
+  <div id="cell-tooltip"></div>
+  <script>
+    // =============================================
+    // 定数・初期データ
+    // =============================================
+    const DEFAULT_MEMBERS = [
+      { name: "パパ", birth: "1986-10-07", color: "#5B8DEF", fixed: true, visible: true },
+      { name: "ママ", birth: "1983-08-30", color: "#EF6B9B", fixed: true, visible: true },
+      { name: "ミコ", birth: "2021-11-20", color: "#F0C75E", fixed: true, visible: true },
+      // クラのみ「15歳超えでフェードアウト」特別ルール
+      { name: "クラ", birth: "2017-12-04", color: "#5EC79E", fixed: true, visible: true, fadeAge: 15 },
+    ];
+    const COLORS = ["#9B59B6", "#E67E22", "#1ABC9C", "#E74C3C", "#95A5A6", "#2ECC71", "#3498DB"];
+    const END_YEAR = 2080;
+    const LIFESPAN = 80;        // 寿命の目安（歳）
+    const GRID_START_YEAR = 1980; // グリッド開始年（固定）
+
+    // =============================================
+    // ユーティリティ関数
+    // =============================================
+
+    /** "YYYY-MM-DD" → Dateオブジェクト（時刻なし） */
+    function pD(s) { return new Date(s + "T00:00:00"); }
+
+    /** 2つのDateの間の週数 */
+    function wkBetween(a, b) { return Math.floor((b - a) / 604800000); }
+
+    /** 誕生日文字列と基準日から年齢 {y, m} を返す。未誕生はnull */
+    function ageAt(bStr, d) {
+      const b = pD(bStr);
+      if (d < b) return null;
+      let y = d.getFullYear() - b.getFullYear();
+      let m = d.getMonth() - b.getMonth();
+      if (d.getDate() < b.getDate()) m--;
+      if (m < 0) { y--; m += 12; }
+      return { y, m };
+    }
+
+    /** #rrggbb形式をrgba()文字列に変換 */
+    function hexRgba(hex, a) {
+      const r = parseInt(hex.slice(1, 3), 16);
+      const g = parseInt(hex.slice(3, 5), 16);
+      const b = parseInt(hex.slice(5, 7), 16);
+      return `rgba(${r},${g},${b},${a})`;
+    }
+
+    /** Date → "YYYY/MM/DD" */
+    function fmtDate(d) {
+      return `${d.getFullYear()}/${String(d.getMonth() + 1).padStart(2, "0")}/${String(d.getDate()).padStart(2, "0")}`;
+    }
+
+    /** Date → "YYYY年M月" */
+    function fmtYM(d) {
+      return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+    }
+
+    /** XSS対策: 文字列のHTMLエスケープ */
+    function escHtml(str) {
+      return String(str).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // =============================================
+    // アプリ状態（シンプルなオブジェクト）
+    // =============================================
+    const today = new Date();
+
+    const state = {
+      members: DEFAULT_MEMBERS.map(m => ({ ...m })),
+      step: 1,          // 1: メンバー設定画面, 2: グリッド画面
+      selCell: null,    // 選択中のグリッドセルインデックス
+      factsIdx: 0,      // Factsパネルで表示するメンバーのインデックス
+      form: { name: "", birth: "", color: COLORS[0] },
+      showAdd: false,
+      mobile: window.innerWidth < 640,
+      containerW: window.innerWidth < 640 ? window.innerWidth - 16 : 600,
+      // スライダーの週オフセット（ファクツパネル用）
+      // nullの場合は「現在（today）」を意味する
+      sliderWk: null,
+    };
+
+    // =============================================
+    // 描画ロジック
+    // =============================================
+
+    /** グリッド計算：開始年を1980年固定 */
+    function computeGrid() {
+      const visibleMembers = state.members.filter(m => m.visible);
+      // グリッドは1980年から固定開始
+      const gridStart = new Date(GRID_START_YEAR, 0, 1);
+      const totalYrs = END_YEAR - GRID_START_YEAR;
+      const todayWk = wkBetween(gridStart, today);
+
+      const labelW = state.mobile ? 30 : 38;
+      const availW = state.containerW - labelW - 8;
+      const baseCellSz = Math.floor(availW / 52) - 1;
+      const cellSz = Math.max(Math.min(baseCellSz, state.mobile ? 10 : 14), 2);
+      const gap = Math.max(Math.round(cellSz * 0.15), 1);
+
+      return { visibleMembers, gridStart, totalYrs, todayWk, labelW, cellSz, gap };
+    }
+
+    /**
+     * グリッドデータ配列を生成（各週のセル情報）
+     * ・全メンバーが80歳超 → グレーフェードアウト
+     * ・fadeAgeが設定されているメンバーはその年齢を超えるとフェードアウト
+     */
+    function buildGridData(visibleMembers, gridStart, totalYrs, todayWk) {
+      const total = totalYrs * 52;
+      const arr = [];
+
+      for (let i = 0; i < total; i++) {
+        const wd = new Date(gridStart.getTime() + i * 604800000);
+        const past = i <= todayWk;
+        const cur = i === todayWk;
+
+        // 生存中のメンバー（誕生後）を抽出し、フェードアウト条件を判定
+        const alive = [];
+        for (const m of visibleMembers) {
+          if (pD(m.birth) > wd) continue; // まだ生まれていない
+          const age = ageAt(m.birth, wd);
+          if (!age) continue;
+
+          // 80歳を超えたら薄く表示
+          const overLifespan = age.y >= LIFESPAN;
+          // 固有フェードアウト年齢（クラの15歳等）を超えたら薄く表示
+          const overFadeAge = m.fadeAge != null && age.y >= m.fadeAge;
+          const faded = overLifespan || overFadeAge;
+
+          alive.push({ m, faded });
+        }
+
+        let bg;
+        if (alive.length === 0) {
+          // 誰も生存していない週
+          bg = past ? "#e8e8e8" : "#f4f4f4";
+        } else if (alive.length === 1) {
+          const { m, faded } = alive[0];
+          if (faded) {
+            // フェードアウト：過去は非常に薄く、未来はさらに薄く
+            bg = hexRgba(m.color, past ? 0.12 : 0.06);
+          } else {
+            bg = past ? m.color : hexRgba(m.color, 0.2);
+          }
+        } else {
+          const p = 100 / alive.length;
+          const stops = alive.map(({ m, faded }, k) => {
+            let c;
+            if (faded) {
+              c = hexRgba(m.color, past ? 0.12 : 0.06);
+            } else {
+              c = past ? m.color : hexRgba(m.color, 0.2);
+            }
+            return `${c} ${k * p}% ${(k + 1) * p}%`;
+          }).join(",");
+          bg = `linear-gradient(to right,${stops})`;
+        }
+
+        arr.push({ wd, alive, past, cur, bg });
       }
-      const past = i <= todayWk;
-      const cur = i === todayWk;
-      let bg;
-      if (alive.length === 0) {
-        bg = past ? "#e8e8e8" : "#f4f4f4";
-      } else if (alive.length === 1) {
-        bg = past ? alive[0].color : hexRgba(alive[0].color, 0.2);
+      return arr;
+    }
+
+    // =============================================
+    // 画面描画
+    // =============================================
+
+    function render() {
+      const root = document.getElementById("root");
+      if (state.step === 1) {
+        root.innerHTML = renderStep1();
+        bindStep1Events();
       } else {
-        const p = 100 / alive.length;
-        const stops = alive.map((m, k) => {
-          const c = past ? m.color : hexRgba(m.color, 0.2);
-          return `${c} ${k * p}% ${(k + 1) * p}%`;
-        }).join(",");
-        bg = `linear-gradient(to right,${stops})`;
+        root.innerHTML = renderStep2();
+        bindStep2Events();
       }
-      arr[i] = { wd, alive, past, cur, bg };
     }
-    return arr;
-  }, [visibleMembers, gridStart, todayWk, totalYrs]);
 
-  const yearLabels = useMemo(() => {
-    const labels = [];
-    const sy = gridStart.getFullYear();
-    const step = totalYrs > 60 ? 10 : 5;
-    for (let i = 0; i < totalYrs; i += step) {
-      labels.push({ year: sy + i, top: i * (cellSz + gap) });
-    }
-    return labels;
-  }, [gridStart, totalYrs, cellSz, gap]);
+    // ---------- STEP 1: メンバー設定 ----------
 
-  const handleGridClick = useCallback((e) => {
-    const idx = e.target.dataset.i;
-    if (idx !== undefined) setSelCell(parseInt(idx));
-  }, []);
-
-  const toggleVisibility = (i) => {
-    const next = members.map((m, j) => j === i ? { ...m, visible: !m.visible } : m);
-    setMembers(next);
-  };
-
-  const addMember = () => {
-    if (form.name && form.birth) {
-      setMembers([...members, { name: form.name, birth: form.birth, color: form.color, fixed: false, visible: true }]);
-      setForm({ name: "", birth: "", color: COLORS[(members.length - 4) % COLORS.length] || COLORS[0] });
-      setShowAdd(false);
-    }
-  };
-
-  const removeMember = (i) => {
-    if (!members[i].fixed) {
-      const next = members.filter((_, j) => j !== i);
-      setMembers(next);
-      if (factsIdx >= next.length) setFactsIdx(0);
-    }
-  };
-
-  // Facts - use factsIdx but ensure it refers to an existing member
-  const safeIdx = factsIdx < members.length ? factsIdx : 0;
-  const fm = members[safeIdx];
-  const fmBirth = fm ? pD(fm.birth) : null;
-  const wksLived = fmBirth ? Math.max(0, wkBetween(fmBirth, today)) : 0;
-  const totalWks = LIFESPAN * 52;
-  const lifePct = Math.min(((wksLived / totalWks) * 100), 100).toFixed(2);
-  const remPct = Math.max(100 - parseFloat(lifePct), 0).toFixed(2);
-  const yrsLived = fmBirth ? (today - fmBirth) / (365.25 * 24 * 60 * 60 * 1000) : 0;
-  const humanPct = (yrsLived / HUMAN_HISTORY_YEARS * 100);
-
-  const cellInfo = selCell !== null && gridData[selCell] ? gridData[selCell] : null;
-
-  if (step === 1) {
-    return (
-      <div style={{ minHeight: "100vh", background: "#fafafa", display: "flex", justifyContent: "center", padding: mobile ? 16 : 32 }}>
-        <div style={{ maxWidth: 480, width: "100%" }}>
-          <div style={{ textAlign: "center", marginBottom: 40, marginTop: mobile ? 20 : 40 }}>
-            <h1 style={{ fontSize: mobile ? 28 : 36, fontWeight: 300, letterSpacing: -1, margin: 0, color: "#1a1a1a" }}>Life in weeks</h1>
-            <p style={{ color: "#999", fontSize: 14, marginTop: 8, fontWeight: 300 }}>家族の時間を、週の単位で見つめてみる</p>
-          </div>
-
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {members.map((m, i) => (
-              <div key={i} style={{
-                background: "#fff", borderRadius: 12, padding: "16px 20px",
-                display: "flex", alignItems: "center", gap: 14,
-                boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #f0f0f0"
-              }}>
-                <div style={{ width: 14, height: 14, borderRadius: "50%", background: m.color, flexShrink: 0 }} />
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 16, fontWeight: 500, color: "#1a1a1a" }}>{m.name}</div>
-                  <div style={{ fontSize: 13, color: "#aaa", marginTop: 2 }}>{m.birth}</div>
-                </div>
-                {m.fixed ? (
-                  <span style={{ fontSize: 11, color: "#ccc", letterSpacing: 0.5 }}>固定</span>
-                ) : (
-                  <button onClick={() => removeMember(i)} style={{
-                    background: "none", border: "none", color: "#ccc", cursor: "pointer",
-                    fontSize: 18, padding: "0 4px", lineHeight: 1
-                  }}>×</button>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {!showAdd ? (
-            <button onClick={() => setShowAdd(true)} style={{
-              width: "100%", marginTop: 12, padding: "14px", background: "none",
-              border: "2px dashed #e0e0e0", borderRadius: 12, color: "#bbb",
-              fontSize: 14, cursor: "pointer", fontWeight: 400
-            }}>+ メンバーを追加</button>
-          ) : (
-            <div style={{
-              marginTop: 12, background: "#fff", borderRadius: 12, padding: 20,
-              boxShadow: "0 1px 3px rgba(0,0,0,0.06)", border: "1px solid #f0f0f0"
-            }}>
-              <div style={{ display: "flex", gap: 10, marginBottom: 10 }}>
-                <input value={form.name} onChange={e => setForm({ ...form, name: e.target.value })}
-                  placeholder="名前" style={{
-                    flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #e8e8e8",
-                    fontSize: 14, outline: "none"
-                  }} />
-                <input type="date" value={form.birth} onChange={e => setForm({ ...form, birth: e.target.value })}
-                  style={{
-                    flex: 1, padding: "10px 12px", borderRadius: 8, border: "1px solid #e8e8e8",
-                    fontSize: 14, outline: "none"
-                  }} />
-              </div>
-              <div style={{ display: "flex", gap: 8, marginBottom: 14, alignItems: "center" }}>
-                <span style={{ fontSize: 13, color: "#999" }}>色:</span>
-                {COLORS.map(c => (
-                  <div key={c} onClick={() => setForm({ ...form, color: c })} style={{
-                    width: 24, height: 24, borderRadius: "50%", background: c, cursor: "pointer",
-                    border: form.color === c ? "2px solid #333" : "2px solid transparent",
-                    transition: "border 0.2s"
-                  }} />
-                ))}
-              </div>
-              <div style={{ display: "flex", gap: 8 }}>
-                <button onClick={addMember} style={{
-                  flex: 1, padding: "10px", borderRadius: 8, background: "#1a1a1a", color: "#fff",
-                  border: "none", fontSize: 14, cursor: "pointer", fontWeight: 500
-                }}>追加</button>
-                <button onClick={() => setShowAdd(false)} style={{
-                  padding: "10px 16px", borderRadius: 8, background: "none", color: "#999",
-                  border: "1px solid #e8e8e8", fontSize: 14, cursor: "pointer"
-                }}>閉じる</button>
-              </div>
-            </div>
-          )}
-
-          <button onClick={() => { setStep(2); setSelCell(null); }} style={{
-            width: "100%", marginTop: 32, padding: "16px", background: "#1a1a1a",
-            color: "#fff", border: "none", borderRadius: 12, fontSize: 16,
-            cursor: "pointer", fontWeight: 500, letterSpacing: 0.5
-          }}>可視化する</button>
-        </div>
+    function renderStep1() {
+      const pad = state.mobile ? 16 : 32;
+      const h1sz = state.mobile ? 28 : 36;
+      return `
+  <div style="min-height:100vh;background:#fafafa;display:flex;justify-content:center;padding:${pad}px">
+    <div style="max-width:480px;width:100%">
+      <div style="text-align:center;margin-bottom:40px;margin-top:${state.mobile ? 20 : 40}px">
+        <h1 style="font-size:${h1sz}px;font-weight:300;letter-spacing:-1px;color:#1a1a1a">Life in weeks</h1>
+        <p style="color:#999;font-size:14px;margin-top:8px;font-weight:300">家族の時間を、週の単位で見つめてみる</p>
       </div>
-    );
-  }
+      <div id="member-list" style="display:flex;flex-direction:column;gap:12px">
+        ${state.members.map((m, i) => renderMemberCard(m, i)).join("")}
+      </div>
+      ${state.showAdd ? renderAddForm() : `
+      <button id="btn-show-add" style="width:100%;margin-top:12px;padding:14px;background:none;
+        border:2px dashed #e0e0e0;border-radius:12px;color:#bbb;font-size:14px;cursor:pointer;font-weight:400">
+        + メンバーを追加
+      </button>`}
+      <button id="btn-goto-grid" style="width:100%;margin-top:32px;padding:16px;background:#1a1a1a;
+        color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;font-weight:500;letter-spacing:0.5px">
+        可視化する
+      </button>
+    </div>
+  </div>`;
+    }
 
-  const gridW = 52 * (cellSz + gap);
+    function renderMemberCard(m, i) {
+      return `
+  <div style="background:#fff;border-radius:12px;padding:16px 20px;
+    display:flex;align-items:center;gap:14px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0">
+    <div style="width:14px;height:14px;border-radius:50%;background:${m.color};flex-shrink:0"></div>
+    <div style="flex:1">
+      <div style="font-size:16px;font-weight:500;color:#1a1a1a">${m.name}</div>
+      <div style="font-size:13px;color:#aaa;margin-top:2px">${m.birth}</div>
+    </div>
+    ${m.fixed
+          ? `<span style="font-size:11px;color:#ccc;letter-spacing:0.5px">固定</span>`
+          : `<button data-remove="${i}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:18px;padding:0 4px;line-height:1">×</button>`
+        }
+  </div>`;
+    }
 
-  return (
-    <div ref={containerRef} style={{ minHeight: "100vh", background: "#fafafa", padding: mobile ? "12px 8px" : "24px 32px" }}>
-      <div style={{ maxWidth: 900, margin: "0 auto" }}>
-        {/* Header */}
-        <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-          <button onClick={() => setStep(1)} style={{
-            background: "none", border: "none", fontSize: 20, cursor: "pointer", color: "#999", padding: "4px 8px"
-          }}>←</button>
-          <h1 style={{ fontSize: mobile ? 20 : 24, fontWeight: 300, margin: 0, color: "#1a1a1a", letterSpacing: -0.5 }}>Life in weeks</h1>
-        </div>
+    function renderAddForm() {
+      const colorDots = COLORS.map(c => `
+    <div data-color="${c}" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;
+      border:${state.form.color === c ? "2px solid #333" : "2px solid transparent"};transition:border 0.2s"></div>
+  `).join("");
+      return `
+  <div style="margin-top:12px;background:#fff;border-radius:12px;padding:20px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0">
+    <div style="display:flex;gap:10px;margin-bottom:10px">
+      <input id="form-name" value="${escHtml(state.form.name)}" placeholder="名前"
+        style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #e8e8e8;font-size:14px;outline:none" />
+      <input id="form-birth" type="date" value="${state.form.birth}"
+        style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #e8e8e8;font-size:14px;outline:none" />
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
+      <span style="font-size:13px;color:#999">色:</span>
+      ${colorDots}
+    </div>
+    <div style="display:flex;gap:8px">
+      <button id="btn-add-member" style="flex:1;padding:10px;border-radius:8px;background:#1a1a1a;color:#fff;
+        border:none;font-size:14px;cursor:pointer;font-weight:500">追加</button>
+      <button id="btn-cancel-add" style="padding:10px 16px;border-radius:8px;background:none;color:#999;
+        border:1px solid #e8e8e8;font-size:14px;cursor:pointer">閉じる</button>
+    </div>
+  </div>`;
+    }
 
-        {/* Legend with toggle */}
-        <div style={{ display: "flex", gap: mobile ? 6 : 10, marginBottom: 16, flexWrap: "wrap" }}>
-          {members.map((m, i) => (
-            <div key={i} style={{ display: "flex", alignItems: "center", gap: 4 }}>
-              <button onClick={() => toggleVisibility(i)} style={{
-                display: "flex", alignItems: "center", gap: 6, cursor: "pointer",
-                padding: "5px 10px", borderRadius: 20, fontSize: 13,
-                background: m.visible ? "#fff" : "#f0f0f0",
-                boxShadow: m.visible ? "0 1px 4px rgba(0,0,0,0.08)" : "none",
-                border: m.visible ? `1.5px solid ${m.color}` : "1.5px solid #ddd",
-                opacity: m.visible ? 1 : 0.5,
-                transition: "all 0.2s"
-              }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: m.visible ? m.color : "#ccc" }} />
-                <span style={{ color: m.visible ? "#555" : "#aaa", fontWeight: 400 }}>{m.name}</span>
-              </button>
-              <button onClick={() => setFactsIdx(i)} style={{
-                background: "none", border: "none", cursor: "pointer", padding: "2px 4px",
-                fontSize: 14, color: safeIdx === i ? m.color : "#ddd",
-                fontWeight: safeIdx === i ? 700 : 400,
-                transition: "color 0.2s"
-              }}>●</button>
-            </div>
-          ))}
-        </div>
+    function bindStep1Events() {
+      const btnShowAdd = document.getElementById("btn-show-add");
+      if (btnShowAdd) btnShowAdd.addEventListener("click", () => { state.showAdd = true; render(); });
 
-        {/* Facts */}
-        <div style={{
-          background: "#fff", borderRadius: 12, padding: mobile ? 14 : 18,
-          marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-          border: "1px solid #f0f0f0"
-        }}>
-          <div style={{ fontSize: 14, fontWeight: 500, color: fm.color, marginBottom: 10 }}>{fm.name}の時間</div>
-          <div style={{ display: "grid", gridTemplateColumns: mobile ? "1fr 1fr" : "1fr 1fr 1fr", gap: 10 }}>
-            <div style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px" }}>
-              <div style={{ fontSize: 11, color: "#aaa", marginBottom: 3 }}>生きた週数</div>
-              <div style={{ fontSize: mobile ? 18 : 20, fontWeight: 300, color: "#1a1a1a" }}>{wksLived.toLocaleString()}<span style={{ fontSize: 11, color: "#aaa" }}> 週</span></div>
-            </div>
-            <div style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px" }}>
-              <div style={{ fontSize: 11, color: "#aaa", marginBottom: 3 }}>人生の進捗 ({LIFESPAN}年基準)</div>
-              <div style={{ fontSize: mobile ? 18 : 20, fontWeight: 300, color: "#1a1a1a" }}>{lifePct}<span style={{ fontSize: 11, color: "#aaa" }}>%</span></div>
-            </div>
-            <div style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px" }}>
-              <div style={{ fontSize: 11, color: "#aaa", marginBottom: 3 }}>残りの人生</div>
-              <div style={{ fontSize: mobile ? 18 : 20, fontWeight: 300, color: "#1a1a1a" }}>{remPct}<span style={{ fontSize: 11, color: "#aaa" }}>%</span></div>
-            </div>
-            <div style={{ background: "#fafafa", borderRadius: 8, padding: "10px 12px", gridColumn: mobile ? "1 / -1" : "auto" }}>
-              <div style={{ fontSize: 11, color: "#aaa", marginBottom: 3 }}>人類史30万年に対する割合</div>
-              <div style={{ fontSize: mobile ? 18 : 20, fontWeight: 300, color: "#1a1a1a" }}>{humanPct.toFixed(6)}<span style={{ fontSize: 11, color: "#aaa" }}>%</span></div>
-            </div>
-          </div>
-          <div style={{ marginTop: 12, height: 5, borderRadius: 3, background: "#f0f0f0", overflow: "hidden" }}>
-            <div style={{ height: "100%", width: `${Math.min(lifePct, 100)}%`, background: fm.color, borderRadius: 3, transition: "width 0.4s" }} />
-          </div>
-        </div>
+      document.querySelectorAll("[data-remove]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const i = parseInt(btn.dataset.remove);
+          if (!state.members[i].fixed) {
+            state.members.splice(i, 1);
+            if (state.factsIdx >= state.members.length) state.factsIdx = 0;
+            render();
+          }
+        });
+      });
 
-        {/* Cell info panel */}
-        {cellInfo && (
-          <div style={{
-            background: "#fff", borderRadius: 12, padding: mobile ? 12 : 16,
-            marginBottom: 16, boxShadow: "0 1px 3px rgba(0,0,0,0.06)",
-            border: "1px solid #f0f0f0", position: "relative"
-          }}>
-            <button onClick={() => setSelCell(null)} style={{
-              position: "absolute", top: 8, right: 12, background: "none",
-              border: "none", color: "#ccc", fontSize: 16, cursor: "pointer"
-            }}>×</button>
-            <div style={{ fontSize: 13, color: "#aaa", marginBottom: 8 }}>
-              {fmtDate(cellInfo.wd)}の週 {cellInfo.past ? "" : "（未来）"}
-            </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
-              {members.map((m, i) => {
-                const age = ageAt(m.birth, cellInfo.wd);
-                return (
-                  <div key={i} style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14 }}>
-                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: m.color }} />
-                    <span style={{ color: "#555", fontWeight: 500, minWidth: 40 }}>{m.name}</span>
-                    <span style={{ color: age ? "#888" : "#ccc" }}>
-                      {age ? `${age.y}歳${age.m}ヶ月` : "まだ生まれていません"}
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+      const btnAdd = document.getElementById("btn-add-member");
+      if (btnAdd) btnAdd.addEventListener("click", () => {
+        const name = document.getElementById("form-name").value.trim();
+        const birth = document.getElementById("form-birth").value;
+        if (name && birth) {
+          state.members.push({ name, birth, color: state.form.color, fixed: false, visible: true });
+          state.form = { name: "", birth: "", color: COLORS[(state.members.length - 4) % COLORS.length] || COLORS[0] };
+          state.showAdd = false;
+          render();
+        }
+      });
 
-        {/* Grid */}
-        <div style={{ overflowX: "auto", paddingBottom: 20 }}>
-          <div style={{ display: "flex", minWidth: gridW + labelW + 8 }}>
-            {/* Year labels */}
-            <div style={{ width: labelW, flexShrink: 0, position: "relative" }}>
-              {yearLabels.map(l => (
-                <div key={l.year} style={{
-                  position: "absolute", top: l.top, fontSize: mobile ? 9 : 10,
-                  color: "#ccc", lineHeight: 1, fontWeight: 300, right: 4
-                }}>{l.year}</div>
-              ))}
-            </div>
-            {/* Grid */}
-            <div ref={gridRef} onClick={handleGridClick} style={{
-              display: "grid",
-              gridTemplateColumns: `repeat(52, ${cellSz}px)`,
-              gap: `${gap}px`,
-              cursor: "pointer"
-            }}>
-              {gridData.map((c, i) => (
-                <div key={i} data-i={i} style={{
-                  width: cellSz, height: cellSz, borderRadius: Math.max(cellSz * 0.15, 1),
-                  background: c.bg,
-                  outline: c.cur ? "2px solid #333" : (selCell === i ? "1.5px solid #666" : "none"),
-                  outlineOffset: c.cur ? -1 : 0,
-                  zIndex: c.cur || selCell === i ? 2 : 0,
-                  position: "relative"
-                }} />
-              ))}
-            </div>
-          </div>
-        </div>
+      const btnCancel = document.getElementById("btn-cancel-add");
+      if (btnCancel) btnCancel.addEventListener("click", () => { state.showAdd = false; render(); });
 
-        <div style={{ textAlign: "center", color: "#ccc", fontSize: 12, marginTop: 4, fontWeight: 300 }}>
-          グリッドをタップすると、その週の各メンバーの年齢が表示されます
-        </div>
+      const formName = document.getElementById("form-name");
+      if (formName) formName.addEventListener("input", e => { state.form.name = e.target.value; });
+      const formBirth = document.getElementById("form-birth");
+      if (formBirth) formBirth.addEventListener("input", e => { state.form.birth = e.target.value; });
+
+      document.querySelectorAll("[data-color]").forEach(dot => {
+        dot.addEventListener("click", () => {
+          state.form.color = dot.dataset.color;
+          document.querySelectorAll("[data-color]").forEach(d => {
+            d.style.border = d.dataset.color === state.form.color ? "2px solid #333" : "2px solid transparent";
+          });
+        });
+      });
+
+      document.getElementById("btn-goto-grid").addEventListener("click", () => {
+        state.step = 2;
+        state.selCell = null;
+        state.sliderWk = null; // スライダーをリセット
+        render();
+        setupResizeObserver();
+        setupWindowResize();
+      });
+    }
+
+    // ---------- STEP 2: グリッド ----------
+
+    /**
+     * スライダーが指す日付を返す
+     * state.sliderWk = null → today
+     * state.sliderWk = 数値 → 誕生日から sliderWk 週後
+     */
+    function getSliderDate(fmBirth) {
+      if (state.sliderWk === null || fmBirth === null) return today;
+      return new Date(fmBirth.getTime() + state.sliderWk * 604800000);
+    }
+
+    function renderStep2() {
+      const { visibleMembers, gridStart, totalYrs, todayWk, labelW, cellSz, gap } = computeGrid();
+      const gridData = buildGridData(visibleMembers, gridStart, totalYrs, todayWk);
+      const gridW = 52 * (cellSz + gap);
+
+      // ===== Factsパネル計算 =====
+      const safeIdx = state.factsIdx < state.members.length ? state.factsIdx : 0;
+      const fm = state.members[safeIdx];
+      const fmBirth = fm ? pD(fm.birth) : null;
+
+      const totalWks = LIFESPAN * 52; // 80年分の週数
+
+      // スライダーの最大値 = 対象メンバーの寿命(LIFESPAN年)の週数
+      const sliderMax = totalWks;
+      // スライダー現在値 = state.sliderWk が null なら誕生日からの実際の経過週数
+      const nowWks = fmBirth ? Math.max(0, wkBetween(fmBirth, today)) : 0;
+      const sliderVal = state.sliderWk !== null ? state.sliderWk : nowWks;
+
+      // スライダーが指す日付（統計計算用）
+      const sliderDate = fmBirth
+        ? new Date(fmBirth.getTime() + sliderVal * 604800000)
+        : today;
+
+      // スライダー位置の統計を計算
+      const wksLivedSlider = sliderVal;
+      const lifePctSlider = Math.min((wksLivedSlider / totalWks) * 100, 100).toFixed(2);
+      const remPctSlider = Math.max(100 - parseFloat(lifePctSlider), 0).toFixed(2);
+      const yrsLivedSlider = sliderVal / 52;
+
+      const adStart = new Date("0001-01-01T00:00:00");
+      const sliderDateForAd = fmBirth
+        ? new Date(fmBirth.getTime() + sliderVal * 604800000)
+        : today;
+      const totalAdYrs = (sliderDateForAd - adStart) / (365.25 * 24 * 60 * 60 * 1000);
+      // 西暦元年からスライダー日時点の人物の年齢が占める割合
+      const refAge = (sliderDateForAd - (fmBirth || sliderDateForAd)) / (365.25 * 24 * 60 * 60 * 1000);
+      const adPct = totalAdYrs > 0 ? (refAge / totalAdYrs * 100).toFixed(4) : "0.0000";
+
+      // スライダーが指す日付の表示文字列（年月 + 年齢）
+      const sliderAgeObj = fmBirth ? ageAt(fm.birth, sliderDate) : null;
+      const sliderAgeStr = sliderAgeObj ? `${sliderAgeObj.y}歳${sliderAgeObj.m}ヶ月` : "";
+      const sliderDateStr = `${fmtYM(sliderDate)}　${sliderAgeStr}`;
+
+      // スライダーの塗り色（fm.color）: CSS変数としてrangeに渡す
+      const sliderFillPct = Math.min((sliderVal / sliderMax) * 100, 100);
+      const isNow = state.sliderWk === null || sliderVal === nowWks;
+
+      // 選択セル情報
+      const cellInfo = state.selCell !== null && gridData[state.selCell] ? gridData[state.selCell] : null;
+
+      // 年ラベル HTML（5年ごと、1980年から）
+      const yearLabelsHtml = [];
+      for (let i = 0; i < totalYrs; i += 5) {
+        const top = i * (cellSz + gap);
+        yearLabelsHtml.push(`<div style="position:absolute;top:${top}px;font-size:${state.mobile ? 9 : 10}px;color:#ccc;line-height:1;font-weight:300;right:4px">${GRID_START_YEAR + i}</div>`);
+      }
+
+      // グリッドセル HTML
+      const cellsHtml = gridData.map((c, i) => {
+        const br = Math.max(cellSz * 0.15, 1);
+        const outline = c.cur
+          ? "outline:2px solid #333;outline-offset:-1px;z-index:2;"
+          : (state.selCell === i ? "outline:1.5px solid #666;z-index:2;" : "");
+        return `<div data-i="${i}" style="width:${cellSz}px;height:${cellSz}px;border-radius:${br}px;background:${c.bg};${outline}position:relative;flex-shrink:0"></div>`;
+      }).join("");
+
+      // レジェンド HTML
+      const legendHtml = state.members.map((m, i) => {
+        const dotActive = state.factsIdx === i;
+        return `
+        <div style="display:flex;align-items:center;gap:4px">
+          <button data-toggle="${i}" style="display:flex;align-items:center;gap:6px;cursor:pointer;
+            padding:5px 10px;border-radius:20px;font-size:13px;
+            background:${m.visible ? "#fff" : "#f0f0f0"};
+            box-shadow:${m.visible ? "0 1px 4px rgba(0,0,0,0.08)" : "none"};
+            border:${m.visible ? `1.5px solid ${m.color}` : "1.5px solid #ddd"};
+            opacity:${m.visible ? 1 : 0.5};transition:all 0.2s">
+            <div style="width:10px;height:10px;border-radius:50%;background:${m.visible ? m.color : "#ccc"}"></div>
+            <span style="color:${m.visible ? "#555" : "#aaa"};font-weight:400">${m.name}</span>
+          </button>
+          <button data-facts="${i}" style="background:none;border:none;cursor:pointer;padding:2px 4px;
+            font-size:14px;color:${dotActive ? m.color : "#ddd"};font-weight:${dotActive ? 700 : 400};transition:color 0.2s">●</button>
+        </div>`;
+      }).join("");
+
+      const factsFontSz = state.mobile ? 18 : 20;
+
+      // Factsパネル HTML（スライダー付き）
+      const factsHtml = `
+  <div style="background:#fff;border-radius:12px;padding:${state.mobile ? 14 : 18}px;
+    margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0">
+    <div style="font-size:14px;font-weight:500;color:${fm.color};margin-bottom:10px">${fm.name}の時間</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+      <div style="background:#fafafa;border-radius:8px;padding:10px 12px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:3px">生きた週数</div>
+        <div data-stat="wks" style="font-size:${factsFontSz}px;font-weight:300;color:#1a1a1a">${wksLivedSlider.toLocaleString()}<span style="font-size:11px;color:#aaa"> 週</span></div>
+      </div>
+      <div style="background:#fafafa;border-radius:8px;padding:10px 12px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:3px">人生の進捗 (${LIFESPAN}年基準)</div>
+        <div data-stat="life" style="font-size:${factsFontSz}px;font-weight:300;color:#1a1a1a">${lifePctSlider}<span style="font-size:11px;color:#aaa">%</span></div>
+      </div>
+      <div style="background:#fafafa;border-radius:8px;padding:10px 12px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:3px">残りの人生</div>
+        <div data-stat="rem" style="font-size:${factsFontSz}px;font-weight:300;color:#1a1a1a">${remPctSlider}<span style="font-size:11px;color:#aaa">%</span></div>
+      </div>
+      <div style="background:#fafafa;border-radius:8px;padding:10px 12px">
+        <div style="font-size:11px;color:#aaa;margin-bottom:3px">西暦元年からの経過割合</div>
+        <div data-stat="ad" style="font-size:${factsFontSz}px;font-weight:300;color:#1a1a1a">${adPct}<span style="font-size:11px;color:#aaa">%</span></div>
       </div>
     </div>
-  );
-}
+
+    <!-- モダンスライダー -->
+    <div class="facts-slider-wrap">
+      <div class="facts-slider-label">
+        <span class="facts-slider-date" id="slider-date-label">${sliderDateStr}</span>
+        <span class="facts-slider-hint">${isNow ? "◉ 現在" : "← ドラッグで時間移動"}</span>
+      </div>
+      <div class="facts-slider-track-wrap">
+        <div class="facts-slider-fill" id="slider-fill"
+          style="width:${sliderFillPct}%;background:${fm.color}"></div>
+        <input id="facts-range" type="range" min="0" max="${sliderMax}"
+          value="${sliderVal}"
+          style="color:${fm.color}"
+          oninput="onSliderInput(this.value)">
+      </div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
+        <span style="font-size:10px;color:#ccc">誕生</span>
+        <button onclick="resetSlider()" style="font-size:10px;color:#aaa;background:none;border:1px solid #ddd;border-radius:6px;padding:2px 8px;cursor:pointer;transition:all 0.15s"
+          onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
+          &#8635; 現在に戻す
+        </button>
+        <span style="font-size:10px;color:#ccc">80歳</span>
+      </div>
+    </div>
+  </div>`;
+
+      // セル選択情報パネル HTML
+      const cellInfoHtml = cellInfo ? `
+  <div style="background:#fff;border-radius:12px;padding:${state.mobile ? 12 : 16}px;
+    margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0;position:relative">
+    <button id="btn-close-cell" style="position:absolute;top:8px;right:12px;background:none;border:none;color:#ccc;font-size:16px;cursor:pointer">×</button>
+    <div style="font-size:13px;color:#aaa;margin-bottom:8px">${fmtDate(cellInfo.wd)}の週 ${cellInfo.past ? "" : "（未来）"}</div>
+    <div style="display:flex;flex-direction:column;gap:5px">
+      ${state.members.map(m => {
+        const age = ageAt(m.birth, cellInfo.wd);
+        return `
+        <div style="display:flex;align-items:center;gap:8px;font-size:14px">
+          <div style="width:8px;height:8px;border-radius:50%;background:${m.color}"></div>
+          <span style="color:#555;font-weight:500;min-width:40px">${m.name}</span>
+          <span style="color:${age ? "#888" : "#ccc"}">${age ? `${age.y}歳${age.m}ヶ月` : "まだ生まれていません"}</span>
+        </div>`;
+      }).join("")}
+    </div>
+  </div>` : "";
+
+      const padCss = state.mobile ? "12px 8px" : "24px 32px";
+      const h1sz = state.mobile ? 20 : 24;
+
+      return `
+  <div id="grid-container" style="min-height:100vh;background:#fafafa;padding:${padCss}">
+    <div style="max-width:900px;margin:0 auto">
+      <!-- ヘッダー -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
+        <button onclick="goBack()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;padding:4px 8px">&#8592;</button>
+        <h1 style="font-size:${h1sz}px;font-weight:300;color:#1a1a1a;letter-spacing:-0.5px">Life in weeks</h1>
+      </div>
+      <!-- レジェンド -->
+      <div style="display:flex;gap:${state.mobile ? 6 : 10}px;margin-bottom:16px;flex-wrap:wrap">
+        ${legendHtml}
+      </div>
+      <!-- Factsパネル -->
+      ${factsHtml}
+      <!-- 選択セル情報 -->
+      ${cellInfoHtml}
+      <!-- グリッド -->
+      <div style="overflow-x:auto;padding-bottom:20px">
+        <div style="display:flex;min-width:${gridW + labelW + 8}px">
+          <!-- 年ラベル（5年ごと） -->
+          <div style="width:${labelW}px;flex-shrink:0;position:relative">
+            ${yearLabelsHtml.join("")}
+          </div>
+          <!-- セルグリッド -->
+          <div id="week-grid" style="display:grid;grid-template-columns:repeat(52,${cellSz}px);gap:${gap}px;cursor:pointer">
+            ${cellsHtml}
+          </div>
+        </div>
+      </div>
+      <div style="text-align:center;color:#ccc;font-size:12px;margin-top:4px;font-weight:300">
+        グリッドをタップすると、その週の各メンバーの年齢が表示されます
+      </div>
+    </div>
+  </div>`;
+    }
+
+    // =============================================
+    // グローバルアクション関数（onclick属性から呼ばれる）
+    // =============================================
+
+    /** 戻るボタン: グリッド → メンバー設定画面へ */
+    function goBack() {
+      document.getElementById("cell-tooltip").style.display = "none";
+      state.step = 1;
+      render();
+    }
+
+    /** スライダーリセット: 現在日時の位置に戻す */
+    function resetSlider() {
+      state.sliderWk = null;
+      // 再描画して値をリセット
+      const root = document.getElementById("root");
+      root.innerHTML = renderStep2();
+      bindStep2Events();
+      setupResizeObserver();
+    }
+
+    // =============================================
+    // スライダーインタラクション（リアルタイム・再描画なし）
+    // =============================================
+
+    /**
+     * スライダー入力ハンドラ
+     * 重い全画面再描画を避けるため、Factsパネル内の数値のみをDOMで直接更新する
+     */
+    function onSliderInput(rawVal) {
+      const sliderVal = parseInt(rawVal);
+      state.sliderWk = sliderVal;
+
+      const safeIdx = state.factsIdx < state.members.length ? state.factsIdx : 0;
+      const fm = state.members[safeIdx];
+      const fmBirth = fm ? pD(fm.birth) : null;
+
+      const totalWks = LIFESPAN * 52;
+      const nowWks = fmBirth ? Math.max(0, wkBetween(fmBirth, today)) : 0;
+      const isNow = sliderVal === nowWks;
+
+      // スライダーが示す日付
+      const sliderDate = fmBirth
+        ? new Date(fmBirth.getTime() + sliderVal * 604800000)
+        : today;
+
+      // ① スライダーの塗り幅を更新
+      const fillPct = Math.min((sliderVal / totalWks) * 100, 100);
+      const fill = document.getElementById("slider-fill");
+      if (fill) fill.style.width = fillPct + "%";
+
+      // ② 日付ラベルを更新
+      const ageObj = fmBirth ? ageAt(fm.birth, sliderDate) : null;
+      const ageStr = ageObj ? `${ageObj.y}歳${ageObj.m}ヶ月` : "";
+      const dateLabel = document.getElementById("slider-date-label");
+      if (dateLabel) dateLabel.textContent = `${fmtYM(sliderDate)}　${ageStr}`;
+
+      // ③ ヒントテキストを更新
+      const hint = document.querySelector(".facts-slider-hint");
+      if (hint) hint.textContent = isNow ? "◉ 現在" : "← ドラッグで時間移動";
+
+      // ④ 統計ボックスの数値を更新
+      const lifePct = Math.min((sliderVal / totalWks) * 100, 100).toFixed(2);
+      const remPct = Math.max(100 - parseFloat(lifePct), 0).toFixed(2);
+
+      const adStart = new Date("0001-01-01T00:00:00");
+      const totalAdYrs = (sliderDate - adStart) / (365.25 * 24 * 60 * 60 * 1000);
+      const refAge = fmBirth ? (sliderDate - fmBirth) / (365.25 * 24 * 60 * 60 * 1000) : 0;
+      const adPct = totalAdYrs > 0 ? (refAge / totalAdYrs * 100).toFixed(4) : "0.0000";
+
+      // DOM上の4つの数値ボックスを直接更新（data-stat属性で識別）
+      // innerHTMLで単位のspanタグも込みで更新する
+      const unitSm = 'style="font-size:11px;color:#aaa"';
+      const boxes = document.querySelectorAll("[data-stat]");
+      boxes.forEach(box => {
+        const sz = box.style.fontSize; // 既存のfont-sizeをそのまま流用
+        const key = box.dataset.stat;
+        if (key === "wks") box.innerHTML = `${sliderVal.toLocaleString()}<span ${unitSm}> 週</span>`;
+        if (key === "life") box.innerHTML = `${lifePct}<span ${unitSm}>%</span>`;
+        if (key === "rem") box.innerHTML = `${remPct}<span ${unitSm}>%</span>`;
+        if (key === "ad") box.innerHTML = `${adPct}<span ${unitSm}>%</span>`;
+      });
+    }
+
+    function bindStep2Events() {
+      // グリッドのホバーツールチップ（PCのみ）
+      if (!state.mobile) {
+        const grid = document.getElementById("week-grid");
+        const tip = document.getElementById("cell-tooltip");
+        if (grid && tip) {
+          grid.addEventListener("mousemove", e => {
+            const el = e.target;
+            if (!el.dataset.i) { tip.style.display = "none"; return; }
+            const idx = parseInt(el.dataset.i);
+            // gridDataを再生成せずに週の日付を計算
+            const { gridStart } = computeGrid();
+            const wd = new Date(gridStart.getTime() + idx * 604800000);
+            const yr = wd.getFullYear();
+            const mo = String(wd.getMonth() + 1).padStart(2, "0");
+            const dy = String(wd.getDate()).padStart(2, "0");
+            // 各メンバーの年齢行を生成
+            const rows = state.members.map(m => {
+              const age = ageAt(m.birth, wd);
+              return `<span style="color:${m.color};font-weight:600">${m.name}</span> ${age ? `${age.y}歳${age.m}ヶ月` : "未誕生"}`;
+            }).join("<br>");
+            tip.innerHTML = `<div style="font-weight:600;margin-bottom:3px">${yr}/${mo}/${dy}</div>${rows}`;
+            tip.style.display = "block";
+            // カーソル右下に表示（画面端で左にずらす）
+            const gap = 14;
+            const tipW = 160;
+            const left = e.clientX + gap + tipW > window.innerWidth
+              ? e.clientX - tipW - gap
+              : e.clientX + gap;
+            tip.style.left = left + "px";
+            tip.style.top = (e.clientY + gap) + "px";
+          });
+          grid.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+        }
+      }
+
+      // 戻るボタン（goBack関数はグローバルに定義済み）
+      // ※ goBack()はonclick属性で呼ばれる（グローバル関数）
+
+      // レジェンド: 表示切替
+      document.querySelectorAll("[data-toggle]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          const i = parseInt(btn.dataset.toggle);
+          state.members[i].visible = !state.members[i].visible;
+          render();
+          setupResizeObserver();
+          setupWindowResize();
+        });
+      });
+
+      // レジェンド: Factsメンバー選択（スライダーもリセット）
+      document.querySelectorAll("[data-facts]").forEach(btn => {
+        btn.addEventListener("click", () => {
+          state.factsIdx = parseInt(btn.dataset.facts);
+          state.sliderWk = null; // メンバーを切り替えたらスライダーをリセット
+          render();
+          setupResizeObserver();
+          setupWindowResize();
+        });
+      });
+
+      // 選択セル閉じる
+      const btnCloseCell = document.getElementById("btn-close-cell");
+      if (btnCloseCell) btnCloseCell.addEventListener("click", () => {
+        state.selCell = null;
+        render();
+        setupResizeObserver();
+        setupWindowResize();
+      });
+
+      // グリッドクリック
+      const grid = document.getElementById("week-grid");
+      if (grid) {
+        grid.addEventListener("click", e => {
+          const idx = e.target.dataset.i;
+          if (idx !== undefined) {
+            state.selCell = parseInt(idx);
+            render();
+            setupResizeObserver();
+            setupWindowResize();
+          }
+        });
+      }
+    }
+
+    // =============================================
+    // レスポンシブ対応
+    // =============================================
+
+    let resizeObserver = null;
+    let windowResizeHandler = null;
+
+    function setupResizeObserver() {
+      if (resizeObserver) resizeObserver.disconnect();
+      const container = document.getElementById("grid-container");
+      if (!container) return;
+      resizeObserver = new ResizeObserver(entries => {
+        for (const e of entries) {
+          const newW = e.contentRect.width;
+          if (Math.abs(newW - state.containerW) > 4) {
+            state.containerW = newW;
+            const root = document.getElementById("root");
+            root.innerHTML = renderStep2();
+            bindStep2Events();
+            setupResizeObserver();
+            setupWindowResize();
+          }
+        }
+      });
+      resizeObserver.observe(container);
+    }
+
+    function setupWindowResize() {
+      if (windowResizeHandler) window.removeEventListener("resize", windowResizeHandler);
+      windowResizeHandler = () => {
+        const newMobile = window.innerWidth < 640;
+        if (newMobile !== state.mobile) {
+          state.mobile = newMobile;
+          render();
+          if (state.step === 2) {
+            setupResizeObserver();
+            setupWindowResize();
+          }
+        }
+      };
+      window.addEventListener("resize", windowResizeHandler);
+    }
+
+    // =============================================
+    // アプリ起動
+    // =============================================
+    window.addEventListener("resize", () => {
+      const newMobile = window.innerWidth < 640;
+      if (newMobile !== state.mobile) {
+        state.mobile = newMobile;
+        if (state.step === 1) render();
+      }
+    });
+
+    render();
+  </script>
+</body>
+
+</html>
