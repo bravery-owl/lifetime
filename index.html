@@ -149,16 +149,74 @@
     // 定数・初期データ
     // =============================================
     const DEFAULT_MEMBERS = [
-      { name: "パパ", birth: "1986-10-07", color: "#5B8DEF", fixed: true, visible: true },
+      // lifespan: 指定なしの場合はグローバルのLIFESPAN(80歳)が適用される
+      { name: "パパ", birth: "1986-10-07", color: "#5B8DEF", fixed: true, visible: true, lifespan: 65 },
       { name: "ママ", birth: "1983-08-30", color: "#EF6B9B", fixed: true, visible: true },
       { name: "ミコ", birth: "2021-11-20", color: "#F0C75E", fixed: true, visible: true },
-      // クラのみ「15歳超えでフェードアウト」特別ルール
-      { name: "クラ", birth: "2017-12-04", color: "#5EC79E", fixed: true, visible: true, fadeAge: 15 },
+      // クラ: 平均寿命15歳。lifespan超えで「いない」扱いになる
+      { name: "クラ", birth: "2017-12-04", color: "#5EC79E", fixed: true, visible: true, lifespan: 15 },
     ];
     const COLORS = ["#9B59B6", "#E67E22", "#1ABC9C", "#E74C3C", "#95A5A6", "#2ECC71", "#3498DB"];
     const END_YEAR = 2080;
     const LIFESPAN = 80;        // 寿命の目安（歳）
     const GRID_START_YEAR = 1980; // グリッド開始年（固定）
+
+    // 家族へのメッセージ（family_moments.txtより選択した50項目）
+    const FAMILY_MESSAGES = [
+      "朝起きたら「おはよう」と目を見て言う",
+      "「ありがとう」を声に出して伝える",
+      "食事を一緒に作る",
+      "子どもの話を最後まで遮らずに聞く",
+      "今日あった出来事を夜に共有する",
+      "家族の誕生日を手書きのメッセージで祝う",
+      "配偶者に「今日もお疲れ様」と伝える",
+      "スマホを置いて、子どもと目を合わせて話す",
+      "家族写真を一緒に見返す",
+      "子どもが絵を描いたら褒めて飾る",
+      "一緒に散歩に出かける",
+      "「大好きだよ」と言葉で伝える",
+      "子どもの好きな食べ物を週に一度作る",
+      "配偶者の頑張りを具体的に口に出して認める",
+      "一緒に映画や動画を見る",
+      "抱きしめる",
+      "子どもの「なんで？」に丁寧に答える",
+      "親に電話して声を聞かせる",
+      "家族全員で笑える話をする",
+      "子どもの寝顔を見て「生まれてきてくれてありがとう」と思う",
+      "休日に家族全員でお出かけの計画を立てる",
+      "子どもと一緒にお風呂に入る",
+      "配偶者に「あなたがいてくれて助かってる」と伝える",
+      "子どもの夢を真剣に聞く",
+      "「ごめんなさい」を素直に言う",
+      "家族の体調を毎日確認する",
+      "一緒に料理の新しいレシピに挑戦する",
+      "子どもが挑戦していることを応援する",
+      "配偶者の趣味に興味を持って聞く",
+      "家事を率先して手伝う",
+      "子どもと一緒に星を見る",
+      "家族の好きな音楽を流しながら食事する",
+      "子どもの学校での話を聞く",
+      "「いつもありがとう」とメッセージを送る",
+      "誰かが悲しんでいたらそっと寄り添う",
+      "一緒に植物を育てる",
+      "家族の夢や目標を書き出して共有する",
+      "子どもと一緒に本を読む",
+      "笑顔で「いってらっしゃい」を言う",
+      "「おかえり」と玄関まで迎えに行く",
+      "一緒に昔のアルバムを見る",
+      "子どもの「すごい！」という瞬間を見逃さない",
+      "配偶者の疲れているサインに気づいてあげる",
+      "家族だけの秘密の合言葉や遊びを作る",
+      "子どもと一緒にダンスや歌を楽しむ",
+      "「あなたがいるから頑張れる」と伝える",
+      "一緒に夕日を見る",
+      "家族の好きな場所へ連れて行く",
+      "年に一度、家族みんなで手紙を書き合う",
+      "この瞬間が一生の宝になると意識して過ごす",
+    ];
+
+
+
 
     // =============================================
     // ユーティリティ関数
@@ -265,13 +323,12 @@
           const age = ageAt(m.birth, wd);
           if (!age) continue;
 
-          // 80歳を超えたら薄く表示
-          const overLifespan = age.y >= LIFESPAN;
-          // 固有フェードアウト年齢（クラの15歳等）を超えたら薄く表示
-          const overFadeAge = m.fadeAge != null && age.y >= m.fadeAge;
-          const faded = overLifespan || overFadeAge;
+          // 各メンバーの寿命（lifespanプロパティがなければグローバルLIFESPAN=80）
+          const memberLifespan = m.lifespan != null ? m.lifespan : LIFESPAN;
+          // 寿命歳経達のメンバーは「いない」扱いにする（アライブリストから完全除外）
+          if (age.y >= memberLifespan) continue;
 
-          alive.push({ m, faded });
+          alive.push({ m });
         }
 
         let bg;
@@ -279,22 +336,12 @@
           // 誰も生存していない週
           bg = past ? "#e8e8e8" : "#f4f4f4";
         } else if (alive.length === 1) {
-          const { m, faded } = alive[0];
-          if (faded) {
-            // フェードアウト：過去は非常に薄く、未来はさらに薄く
-            bg = hexRgba(m.color, past ? 0.12 : 0.06);
-          } else {
-            bg = past ? m.color : hexRgba(m.color, 0.2);
-          }
+          const { m } = alive[0];
+          bg = past ? m.color : hexRgba(m.color, 0.2);
         } else {
           const p = 100 / alive.length;
-          const stops = alive.map(({ m, faded }, k) => {
-            let c;
-            if (faded) {
-              c = hexRgba(m.color, past ? 0.12 : 0.06);
-            } else {
-              c = past ? m.color : hexRgba(m.color, 0.2);
-            }
+          const stops = alive.map(({ m }, k) => {
+            const c = past ? m.color : hexRgba(m.color, 0.2);
             return `${c} ${k * p}% ${(k + 1) * p}%`;
           }).join(",");
           bg = `linear-gradient(to right,${stops})`;
@@ -469,9 +516,11 @@
       const fm = state.members[safeIdx];
       const fmBirth = fm ? pD(fm.birth) : null;
 
-      const totalWks = LIFESPAN * 52; // 80年分の週数
+      // 対象メンバーの寿命（メンバー別lifespanまたはグローバルLIFESPAN)
+      const fmLifespan = fm && fm.lifespan != null ? fm.lifespan : LIFESPAN;
+      const totalWks = fmLifespan * 52; // メンバー別寿命分の週数
 
-      // スライダーの最大値 = 対象メンバーの寿命(LIFESPAN年)の週数
+      // スライダーの最大値 = 対象メンバーの寿命(fmLifespan年)の週数
       const sliderMax = totalWks;
       // スライダー現在値 = state.sliderWk が null なら誕生日からの実際の経過週数
       const nowWks = fmBirth ? Math.max(0, wkBetween(fmBirth, today)) : 0;
@@ -508,6 +557,30 @@
 
       // 選択セル情報
       const cellInfo = state.selCell !== null && gridData[state.selCell] ? gridData[state.selCell] : null;
+
+      // ===== 家族メッセージパネル HTML =====
+      // 初回表示時にランダムで1つ選ぶ（state.familyMsgIdxに保持して次回以降は変えない）
+      if (state.familyMsgIdx == null) {
+        state.familyMsgIdx = Math.floor(Math.random() * FAMILY_MESSAGES.length);
+      }
+      const currentMsg = FAMILY_MESSAGES[state.familyMsgIdx];
+      const msgPad = state.mobile ? 14 : 20;
+      const msgFontSz = state.mobile ? 15 : 17;
+      const familyMsgHtml = `
+  <div id="family-msg-panel" style="background:#fff;border-radius:12px;padding:${msgPad}px;
+    margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0;
+    display:flex;align-items:center;gap:14px">
+    <div style="flex:1;text-align:center">
+      <div style="font-size:11px;color:#bbb;margin-bottom:8px;letter-spacing:1px">今日の一言</div>
+      <div id="family-msg-text" style="font-size:${msgFontSz}px;font-weight:400;
+        color:#333;line-height:1.7;letter-spacing:0.3px">${currentMsg}</div>
+    </div>
+    <button onclick="nextFamilyMsg()" style="flex-shrink:0;background:none;border:1px solid #e8e8e8;
+      border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;color:#bbb;
+      display:flex;align-items:center;justify-content:center;transition:all 0.2s"
+      onmouseover="this.style.background='#f5f5f5';this.style.color='#888'"
+      onmouseout="this.style.background='none';this.style.color='#bbb'">↻</button>
+  </div>`;
 
       // 年ラベル HTML（5年ごと、1980年から）
       const yearLabelsHtml = [];
@@ -590,7 +663,20 @@
           onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
           &#8635; 現在に戻す
         </button>
-        <span style="font-size:10px;color:#ccc">80歳</span>
+        <span style="font-size:10px;color:#ccc">${fmLifespan}歳</span>
+      </div>
+      <!-- スライダー時点の全員年齢パネル -->
+      <div id="slider-age-panel" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px 16px">
+        ${state.members.map(m => {
+        const age = ageAt(m.birth, sliderDate);
+        const mLifespan = m.lifespan != null ? m.lifespan : LIFESPAN;
+        const gone = age && age.y >= mLifespan; // 寿命超え
+        return `<div style="display:flex;align-items:center;gap:5px;font-size:12px">
+            <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${m.color};flex-shrink:0"></span>
+            <span style="color:#555;font-weight:500">${m.name}</span>
+            <span style="color:${gone ? '#ddd' : age ? '#888' : '#bbb'}">${gone ? 'いない' : age ? `${age.y}<span style="font-size:10px;color:#aaa">歳</span>${age.m}<span style="font-size:10px;color:#aaa">ヶ月</span>` : '未誕生'}</span>
+          </div>`;
+      }).join("")}
       </div>
     </div>
   </div>`;
@@ -604,11 +690,13 @@
     <div style="display:flex;flex-direction:column;gap:5px">
       ${state.members.map(m => {
         const age = ageAt(m.birth, cellInfo.wd);
+        const mLifespan = m.lifespan != null ? m.lifespan : LIFESPAN;
+        const gone = age && age.y >= mLifespan;
         return `
         <div style="display:flex;align-items:center;gap:8px;font-size:14px">
           <div style="width:8px;height:8px;border-radius:50%;background:${m.color}"></div>
           <span style="color:#555;font-weight:500;min-width:40px">${m.name}</span>
-          <span style="color:${age ? "#888" : "#ccc"}">${age ? `${age.y}歳${age.m}ヶ月` : "まだ生まれていません"}</span>
+          <span style="color:${gone ? '#ddd' : age ? '#888' : '#ccc'}">${gone ? 'いない' : age ? `${age.y}歳${age.m}ヶ月` : 'まだ生まれていません'}</span>
         </div>`;
       }).join("")}
     </div>
@@ -631,6 +719,8 @@
       </div>
       <!-- Factsパネル -->
       ${factsHtml}
+      <!-- 家族メッセージパネル -->
+      ${familyMsgHtml}
       <!-- 選択セル情報 -->
       ${cellInfoHtml}
       <!-- グリッド -->
@@ -670,6 +760,26 @@
       render(); // render()内でsetupResizeObserverも自動呼び出しされる
     }
 
+    /** 家族メッセージをランダムで次の1つに切り替える（DOM直接更新・再描画なし） */
+    function nextFamilyMsg() {
+      // 現在と違うインデックスをランダムで選ぶ
+      let next;
+      do {
+        next = Math.floor(Math.random() * FAMILY_MESSAGES.length);
+      } while (next === state.familyMsgIdx && FAMILY_MESSAGES.length > 1);
+      state.familyMsgIdx = next;
+      const el = document.getElementById("family-msg-text");
+      if (el) {
+        // フェードアニメーション付きで切り替え
+        el.style.transition = "opacity 0.25s";
+        el.style.opacity = "0";
+        setTimeout(() => {
+          el.textContent = FAMILY_MESSAGES[state.familyMsgIdx];
+          el.style.opacity = "1";
+        }, 250);
+      }
+    }
+
     // =============================================
     // スライダーインタラクション（リアルタイム・再描画なし）
     // =============================================
@@ -686,7 +796,8 @@
       const fm = state.members[safeIdx];
       const fmBirth = fm ? pD(fm.birth) : null;
 
-      const totalWks = LIFESPAN * 52;
+      const fmLifespan = fm && fm.lifespan != null ? fm.lifespan : LIFESPAN;
+      const totalWks = fmLifespan * 52; // メンバー別寿命分の週数
       const nowWks = fmBirth ? Math.max(0, wkBetween(fmBirth, today)) : 0;
       const isNow = sliderVal === nowWks;
 
@@ -731,42 +842,94 @@
         if (key === "rem") box.innerHTML = `${remPct}<span ${unitSm}>%</span>`;
         if (key === "ad") box.innerHTML = `${adPct}<span ${unitSm}>%</span>`;
       });
+
+      // ⑤ 全員年齢パネルを更新
+      const agePanel = document.getElementById("slider-age-panel");
+      if (agePanel) {
+        agePanel.innerHTML = state.members.map(m => {
+          const age = ageAt(m.birth, sliderDate);
+          const mLifespan = m.lifespan != null ? m.lifespan : LIFESPAN;
+          const gone = age && age.y >= mLifespan;
+          return `<div style="display:flex;align-items:center;gap:5px;font-size:12px">
+            <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${m.color};flex-shrink:0"></span>
+            <span style="color:#555;font-weight:500">${m.name}</span>
+            <span style="color:${gone ? '#ddd' : age ? '#888' : '#bbb'}">${gone ? 'いない' : age
+              ? `${age.y}<span style="font-size:10px;color:#aaa">歳</span>${age.m}<span style="font-size:10px;color:#aaa">ヶ月</span>`
+              : '未誕生'}</span>
+          </div>`;
+        }).join("");
+      }
+
+      // ⑥ グリッドの黒枠（カーソルマーカー）をスライダー位置に移動
+      const { gridStart } = computeGrid();
+      const sliderGridIdx = Math.round((sliderDate - gridStart) / 604800000);
+
+      // 前回のスライダーマーカーをクリア
+      const prevMarked = document.querySelector("[data-slider-cur]");
+      if (prevMarked) {
+        prevMarked.style.outline = "";
+        prevMarked.style.zIndex = "";
+        prevMarked.removeAttribute("data-slider-cur");
+      }
+      // 新しい位置に黒枠を表示
+      const newCell = document.querySelector(`[data-i="${sliderGridIdx}"]`);
+      if (newCell) {
+        newCell.style.outline = "2px solid #1a1a1a";
+        newCell.style.outlineOffset = "-1px";
+        newCell.style.zIndex = "3";
+        newCell.setAttribute("data-slider-cur", "1");
+      }
     }
 
     function bindStep2Events() {
-      // グリッドのホバーツールチップ（PCのみ）
-      if (!state.mobile) {
-        const grid = document.getElementById("week-grid");
+      // グリッドのホバーツールチップ（PC: mousemove、スマホ: touchstart共通）
+      function showTip(idx, clientX, clientY) {
         const tip = document.getElementById("cell-tooltip");
-        if (grid && tip) {
+        if (!tip) return;
+        const { gridStart } = computeGrid();
+        const wd = new Date(gridStart.getTime() + idx * 604800000);
+        const yr = wd.getFullYear();
+        const mo = String(wd.getMonth() + 1).padStart(2, "0");
+        const dy = String(wd.getDate()).padStart(2, "0");
+        const rows = state.members.map(m => {
+          const age = ageAt(m.birth, wd);
+          const mLifespan = m.lifespan != null ? m.lifespan : LIFESPAN;
+          const gone = age && age.y >= mLifespan;
+          return `<span style="color:${m.color};font-weight:600">${m.name}</span> ${gone ? 'いない' : age ? `${age.y}歳${age.m}ヶ月` : "未誕生"}`;
+        }).join("<br>");
+        tip.innerHTML = `<div style="font-weight:600;margin-bottom:3px">${yr}/${mo}/${dy}</div>${rows}`;
+        tip.style.display = "block";
+        const gap = 14;
+        const tipW = 160;
+        const left = clientX + gap + tipW > window.innerWidth
+          ? clientX - tipW - gap : clientX + gap;
+        tip.style.left = left + "px";
+        tip.style.top = (clientY + gap) + "px";
+      }
+
+      const grid = document.getElementById("week-grid");
+      const tip = document.getElementById("cell-tooltip");
+
+      if (grid) {
+        // PC: hover
+        if (!state.mobile) {
           grid.addEventListener("mousemove", e => {
-            const el = e.target;
-            if (!el.dataset.i) { tip.style.display = "none"; return; }
-            const idx = parseInt(el.dataset.i);
-            // gridDataを再生成せずに週の日付を計算
-            const { gridStart } = computeGrid();
-            const wd = new Date(gridStart.getTime() + idx * 604800000);
-            const yr = wd.getFullYear();
-            const mo = String(wd.getMonth() + 1).padStart(2, "0");
-            const dy = String(wd.getDate()).padStart(2, "0");
-            // 各メンバーの年齢行を生成
-            const rows = state.members.map(m => {
-              const age = ageAt(m.birth, wd);
-              return `<span style="color:${m.color};font-weight:600">${m.name}</span> ${age ? `${age.y}歳${age.m}ヶ月` : "未誕生"}`;
-            }).join("<br>");
-            tip.innerHTML = `<div style="font-weight:600;margin-bottom:3px">${yr}/${mo}/${dy}</div>${rows}`;
-            tip.style.display = "block";
-            // カーソル右下に表示（画面端で左にずらす）
-            const gap = 14;
-            const tipW = 160;
-            const left = e.clientX + gap + tipW > window.innerWidth
-              ? e.clientX - tipW - gap
-              : e.clientX + gap;
-            tip.style.left = left + "px";
-            tip.style.top = (e.clientY + gap) + "px";
+            if (!e.target.dataset.i) { tip.style.display = "none"; return; }
+            showTip(parseInt(e.target.dataset.i), e.clientX, e.clientY);
           });
-          grid.addEventListener("mouseleave", () => { tip.style.display = "none"; });
+          grid.addEventListener("mouseleave", () => { if (tip) tip.style.display = "none"; });
         }
+
+        // スマホ: touchstartでツールチップ表示
+        grid.addEventListener("touchstart", e => {
+          const touch = e.touches[0];
+          const el = document.elementFromPoint(touch.clientX, touch.clientY);
+          if (el && el.dataset.i !== undefined) {
+            showTip(parseInt(el.dataset.i), touch.clientX, touch.clientY);
+            // 0.7秒後に自動非表示
+            setTimeout(() => { if (tip) tip.style.display = "none"; }, 1500);
+          }
+        }, { passive: true });
       }
 
       // 戻るボタン（goBack関数はグローバルに定義済み）
@@ -797,8 +960,7 @@
         render();
       });
 
-      // グリッドクリック
-      const grid = document.getElementById("week-grid");
+      // グリッドクリック（grid変数は上で定義済み）
       if (grid) {
         grid.addEventListener("click", e => {
           const idx = e.target.dataset.i;
