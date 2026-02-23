@@ -312,11 +312,15 @@
     function render() {
       const root = document.getElementById("root");
       if (state.step === 1) {
+        // step1に戻るときResizeObserverを切断してリーク防止
+        if (resizeObserver) { resizeObserver.disconnect(); resizeObserver = null; }
         root.innerHTML = renderStep1();
         bindStep1Events();
       } else {
         root.innerHTML = renderStep2();
         bindStep2Events();
+        // step2描画後は必ずResizeObserver再登録（render()が唯一の入口）
+        setupResizeObserver();
       }
     }
 
@@ -331,9 +335,6 @@
       <div style="text-align:center;margin-bottom:40px;margin-top:${state.mobile ? 20 : 40}px">
         <h1 style="font-size:${h1sz}px;font-weight:300;letter-spacing:-1px;color:#1a1a1a">Life in weeks</h1>
         <p style="color:#999;font-size:14px;margin-top:8px;font-weight:300">家族の時間を、週の単位で見つめてみる</p>
-      </div>
-      <div id="member-list" style="display:flex;flex-direction:column;gap:12px">
-        ${state.members.map((m, i) => renderMemberCard(m, i)).join("")}
       </div>
       ${state.showAdd ? renderAddForm() : `
       <button id="btn-show-add" style="width:100%;margin-top:12px;padding:14px;background:none;
@@ -666,11 +667,7 @@
     /** スライダーリセット: 現在日時の位置に戻す */
     function resetSlider() {
       state.sliderWk = null;
-      // 再描画して値をリセット
-      const root = document.getElementById("root");
-      root.innerHTML = renderStep2();
-      bindStep2Events();
-      setupResizeObserver();
+      render(); // render()内でsetupResizeObserverも自動呼び出しされる
     }
 
     // =============================================
@@ -780,9 +777,7 @@
         btn.addEventListener("click", () => {
           const i = parseInt(btn.dataset.toggle);
           state.members[i].visible = !state.members[i].visible;
-          render();
-          setupResizeObserver();
-          setupWindowResize();
+          render(); // render()内でsetupResizeObserverも呼ばれる
         });
       });
 
@@ -792,8 +787,6 @@
           state.factsIdx = parseInt(btn.dataset.facts);
           state.sliderWk = null; // メンバーを切り替えたらスライダーをリセット
           render();
-          setupResizeObserver();
-          setupWindowResize();
         });
       });
 
@@ -802,8 +795,6 @@
       if (btnCloseCell) btnCloseCell.addEventListener("click", () => {
         state.selCell = null;
         render();
-        setupResizeObserver();
-        setupWindowResize();
       });
 
       // グリッドクリック
@@ -814,8 +805,6 @@
           if (idx !== undefined) {
             state.selCell = parseInt(idx);
             render();
-            setupResizeObserver();
-            setupWindowResize();
           }
         });
       }
@@ -837,11 +826,10 @@
           const newW = e.contentRect.width;
           if (Math.abs(newW - state.containerW) > 4) {
             state.containerW = newW;
-            const root = document.getElementById("root");
-            root.innerHTML = renderStep2();
-            bindStep2Events();
-            setupResizeObserver();
-            setupWindowResize();
+            // render()経由で再描画することで state.stepの変化を正しく反映する
+            render();
+            // render()内で放棄されるので再登録は不要
+            // (ResizeObserverはアンマウントされるまで続く)
           }
         }
       });
