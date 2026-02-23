@@ -5,7 +5,60 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Life in weeks</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+JP:wght@300;400;500;600&display=swap"
+    rel="stylesheet">
   <style>
+    :root {
+      --bg: #f0f2f5;
+      --bg2: #e4e7ec;
+      --card: #ffffff;
+      --card-border: rgba(0, 0, 0, 0.06);
+      --card-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+      --card-hover: 0 8px 24px rgba(0, 0, 0, 0.1);
+      --text: #1a1a2e;
+      --text2: #6c7086;
+      --text3: #a0a4b8;
+      --stat-bg: #f5f6fa;
+      --slider-bg: linear-gradient(135deg, #f0f2ff 0%, #e8ecff 100%);
+      --slider-border: #dde2f2;
+      --slider-track: #d0d4e4;
+      --input-bg: #fff;
+      --input-border: #ddd;
+      --btn-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --btn-hover: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+      --tooltip-bg: rgba(15, 15, 30, 0.92);
+      --grid-empty-past: #dde0e6;
+      --grid-empty-future: #eceef2;
+      --cur-outline: #1a1a2e;
+    }
+
+    .dark {
+      --bg: #0f0f1a;
+      --bg2: #16162a;
+      --card: rgba(26, 26, 50, 0.8);
+      --card-border: rgba(255, 255, 255, 0.06);
+      --card-shadow: 0 2px 16px rgba(0, 0, 0, 0.3);
+      --card-hover: 0 8px 32px rgba(0, 0, 0, 0.4);
+      --text: #e4e4f0;
+      --text2: #8888a8;
+      --text3: #555570;
+      --stat-bg: rgba(255, 255, 255, 0.04);
+      --slider-bg: linear-gradient(135deg, #1a1a35 0%, #1e1e3a 100%);
+      --slider-border: #2a2a45;
+      --slider-track: #2a2a45;
+      --input-bg: #1a1a2e;
+      --input-border: #2a2a45;
+      --btn-primary: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      --btn-hover: linear-gradient(135deg, #8b9cf7 0%, #9b6bc6 100%);
+      --tooltip-bg: rgba(10, 10, 25, 0.95);
+      --grid-empty-past: #1e1e30;
+      --grid-empty-future: #15152a;
+      --cur-outline: #a0b0ff;
+    }
+
     *,
     *::before,
     *::after {
@@ -15,25 +68,87 @@
     }
 
     body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: #fafafa;
+      font-family: 'Inter', 'Noto Sans JP', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      transition: background 0.4s, color 0.4s;
     }
 
-    button {
-      font-family: inherit;
-    }
-
+    button,
     input {
       font-family: inherit;
     }
 
-    /* ===== モダンスライダースタイル ===== */
+    /* カード共通 */
+    .g-card {
+      background: var(--card);
+      border-radius: 16px;
+      border: 1px solid var(--card-border);
+      box-shadow: var(--card-shadow);
+      backdrop-filter: blur(12px);
+      transition: transform 0.25s, box-shadow 0.25s, background 0.4s;
+    }
+
+    .g-card:hover {
+      box-shadow: var(--card-hover);
+    }
+
+    .g-card-lift:hover {
+      transform: translateY(-2px);
+    }
+
+    /* プライマリボタン */
+    .g-btn {
+      background: var(--btn-primary);
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      font-size: 16px;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.5px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+
+    .g-btn:hover {
+      background: var(--btn-hover);
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(102, 126, 234, 0.35);
+    }
+
+    .g-btn:active {
+      transform: translateY(0);
+    }
+
+    /* ダークモードトグル */
+    .dark-toggle {
+      background: var(--stat-bg);
+      border: 1px solid var(--card-border);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 18px;
+      transition: all 0.3s;
+    }
+
+    .dark-toggle:hover {
+      transform: rotate(30deg) scale(1.1);
+    }
+
+    /* スライダー */
     .facts-slider-wrap {
       margin-top: 16px;
       padding: 14px 16px;
-      background: linear-gradient(135deg, #f8f9ff 0%, #f0f4ff 100%);
-      border-radius: 12px;
-      border: 1px solid #e8eeff;
+      background: var(--slider-bg);
+      border-radius: 14px;
+      border: 1px solid var(--slider-border);
+      transition: background 0.4s;
     }
 
     .facts-slider-label {
@@ -46,53 +161,13 @@
     .facts-slider-date {
       font-size: 13px;
       font-weight: 600;
-      color: #333;
+      color: var(--text);
       letter-spacing: -0.3px;
     }
 
     .facts-slider-hint {
       font-size: 11px;
-      color: #aaa;
-    }
-
-    /* rangeのカスタムスタイル */
-    #facts-range {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 100%;
-      height: 6px;
-      border-radius: 3px;
-      background: #e0e4f0;
-      outline: none;
-      cursor: pointer;
-    }
-
-    #facts-range::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #fff;
-      border: 2px solid currentColor;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      cursor: pointer;
-      transition: transform 0.15s, box-shadow 0.15s;
-    }
-
-    #facts-range::-webkit-slider-thumb:hover {
-      transform: scale(1.2);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
-    }
-
-    #facts-range::-moz-range-thumb {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      background: #fff;
-      border: 2px solid currentColor;
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
-      cursor: pointer;
+      color: var(--text3);
     }
 
     .facts-slider-track-wrap {
@@ -109,40 +184,137 @@
       pointer-events: none;
       transition: width 0.05s;
       z-index: 0;
-      /* つまみの下に収める */
     }
 
     #facts-range {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: transparent !important;
+      outline: none;
+      cursor: pointer;
       position: relative;
       z-index: 1;
-      /* fillより上に持ってくる */
-      background: transparent !important;
-      /* ブラウザデフォルトのトラックを非表示 */
     }
 
-    /* ===== ホバーツールチップ ===== */
+    #facts-range::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 2.5px solid currentColor;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+      margin-top: -8px;
+    }
+
+    #facts-range::-webkit-slider-thumb:hover {
+      transform: scale(1.25);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+    }
+
+    #facts-range::-moz-range-thumb {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--card);
+      border: 2.5px solid currentColor;
+      box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+      cursor: pointer;
+    }
+
+    #facts-range::-webkit-slider-runnable-track {
+      background: var(--slider-track);
+      height: 6px;
+      border-radius: 3px;
+    }
+
+    #facts-range::-moz-range-track {
+      background: var(--slider-track);
+      height: 6px;
+      border-radius: 3px;
+      border: none;
+    }
+
+    /* ツールチップ */
     #cell-tooltip {
       position: fixed;
-      background: rgba(26, 26, 26, 0.88);
-      color: #fff;
-      padding: 6px 10px;
-      border-radius: 8px;
+      background: var(--tooltip-bg);
+      color: #eee;
+      padding: 8px 12px;
+      border-radius: 10px;
       font-size: 11px;
-      line-height: 1.6;
+      line-height: 1.7;
       pointer-events: none;
       white-space: nowrap;
-      backdrop-filter: blur(4px);
-      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
       z-index: 9999;
       display: none;
-      transition: opacity 0.1s;
+      transition: opacity 0.15s;
+    }
+
+    /* アニメーション */
+    @keyframes fadeSlideIn {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+      }
+
+      to {
+        opacity: 1;
+      }
+    }
+
+    @keyframes stagger {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .anim-page {
+      animation: fadeSlideIn 0.5s ease-out both;
+    }
+
+    .anim-card {
+      animation: stagger 0.4s ease-out both;
+    }
+
+    /* グリッドセルホバー */
+    #week-grid>div {
+      transition: transform 0.1s;
+    }
+
+    #week-grid>div:hover {
+      transform: scale(1.5);
+      z-index: 5;
     }
   </style>
 </head>
 
 <body>
   <div id="root"></div>
-  <!-- ホバーツールチップ（グリッド用・固定表示） -->
   <div id="cell-tooltip"></div>
   <script>
     // =============================================
@@ -269,17 +441,18 @@
 
     const state = {
       members: DEFAULT_MEMBERS.map(m => ({ ...m })),
-      step: 1,          // 1: メンバー設定画面, 2: グリッド画面
-      selCell: null,    // 選択中のグリッドセルインデックス
-      factsIdx: 0,      // Factsパネルで表示するメンバーのインデックス
+      step: 1,
+      selCell: null,
+      factsIdx: 0,
       form: { name: "", birth: "", color: COLORS[0] },
       showAdd: false,
       mobile: window.innerWidth < 640,
       containerW: window.innerWidth < 640 ? window.innerWidth - 16 : 600,
-      // スライダーの週オフセット（ファクツパネル用）
-      // nullの場合は「現在（today）」を意味する
       sliderWk: null,
+      dark: localStorage.getItem('liw-dark') === '1',
     };
+    // ダークモード初期適用
+    if (state.dark) document.body.classList.add('dark');
 
     // =============================================
     // 描画ロジック
@@ -333,8 +506,7 @@
 
         let bg;
         if (alive.length === 0) {
-          // 誰も生存していない週
-          bg = past ? "#e8e8e8" : "#f4f4f4";
+          bg = past ? 'var(--grid-empty-past)' : 'var(--grid-empty-future)';
         } else if (alive.length === 1) {
           const { m } = alive[0];
           bg = past ? m.color : hexRgba(m.color, 0.2);
@@ -375,22 +547,31 @@
 
     function renderStep1() {
       const pad = state.mobile ? 16 : 32;
-      const h1sz = state.mobile ? 28 : 36;
+      const h1sz = state.mobile ? 30 : 40;
+      const darkIcon = state.dark ? '☀️' : '🌙';
       return `
-  <div style="min-height:100vh;background:#fafafa;display:flex;justify-content:center;padding:${pad}px">
+  <div class="anim-page" style="min-height:100vh;display:flex;justify-content:center;padding:${pad}px">
     <div style="max-width:480px;width:100%">
-      <div style="text-align:center;margin-bottom:40px;margin-top:${state.mobile ? 20 : 40}px">
-        <h1 style="font-size:${h1sz}px;font-weight:300;letter-spacing:-1px;color:#1a1a1a">Life in weeks</h1>
-        <p style="color:#999;font-size:14px;margin-top:8px;font-weight:300">家族の時間を、週の単位で見つめてみる</p>
+      <div style="display:flex;justify-content:flex-end;margin-bottom:8px">
+        <button class="dark-toggle" onclick="toggleDark()">${darkIcon}</button>
       </div>
+      <div style="text-align:center;margin-bottom:40px;margin-top:${state.mobile ? 8 : 20}px">
+        <h1 style="font-size:${h1sz}px;font-weight:300;letter-spacing:-1.5px;color:var(--text)">
+          <span style="background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Life</span> in weeks
+        </h1>
+        <p style="color:var(--text2);font-size:14px;margin-top:10px;font-weight:400;letter-spacing:0.3px">家族の時間を、週の単位で見つめてみる</p>
+      </div>
+      ${state.members.map((m, i) => renderMemberCard(m, i)).join('')}
       ${state.showAdd ? renderAddForm() : `
       <button id="btn-show-add" style="width:100%;margin-top:12px;padding:14px;background:none;
-        border:2px dashed #e0e0e0;border-radius:12px;color:#bbb;font-size:14px;cursor:pointer;font-weight:400">
+        border:2px dashed var(--card-border);border-radius:14px;color:var(--text3);font-size:14px;cursor:pointer;font-weight:400;
+        transition:border-color 0.2s,color 0.2s"
+        onmouseover="this.style.borderColor='#667eea';this.style.color='#667eea'"
+        onmouseout="this.style.borderColor='';this.style.color=''">
         + メンバーを追加
       </button>`}
-      <button id="btn-goto-grid" style="width:100%;margin-top:32px;padding:16px;background:#1a1a1a;
-        color:#fff;border:none;border-radius:12px;font-size:16px;cursor:pointer;font-weight:500;letter-spacing:0.5px">
-        可視化する
+      <button id="btn-goto-grid" class="g-btn" style="width:100%;margin-top:32px;padding:18px">
+        可視化する →
       </button>
     </div>
   </div>`;
@@ -398,44 +579,44 @@
 
     function renderMemberCard(m, i) {
       return `
-  <div style="background:#fff;border-radius:12px;padding:16px 20px;
-    display:flex;align-items:center;gap:14px;
-    box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0">
-    <div style="width:14px;height:14px;border-radius:50%;background:${m.color};flex-shrink:0"></div>
+  <div class="g-card g-card-lift anim-card" style="padding:16px 20px;margin-bottom:10px;
+    display:flex;align-items:center;gap:14px;animation-delay:${i * 0.08}s">
+    <div style="width:14px;height:14px;border-radius:50%;background:${m.color};flex-shrink:0;box-shadow:0 0 8px ${hexRgba(m.color, 0.4)}"></div>
     <div style="flex:1">
-      <div style="font-size:16px;font-weight:500;color:#1a1a1a">${m.name}</div>
-      <div style="font-size:13px;color:#aaa;margin-top:2px">${m.birth}</div>
+      <div style="font-size:16px;font-weight:500;color:var(--text)">${m.name}</div>
     </div>
     ${m.fixed
-          ? `<span style="font-size:11px;color:#ccc;letter-spacing:0.5px">固定</span>`
-          : `<button data-remove="${i}" style="background:none;border:none;color:#ccc;cursor:pointer;font-size:18px;padding:0 4px;line-height:1">×</button>`
+          ? `<span style="font-size:10px;color:var(--text3);letter-spacing:1px;text-transform:uppercase">固定</span>`
+          : `<button data-remove="${i}" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:18px;padding:0 4px;line-height:1;transition:color 0.2s" onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color=''">×</button>`
         }
   </div>`;
     }
 
     function renderAddForm() {
       const colorDots = COLORS.map(c => `
-    <div data-color="${c}" style="width:24px;height:24px;border-radius:50%;background:${c};cursor:pointer;
-      border:${state.form.color === c ? "2px solid #333" : "2px solid transparent"};transition:border 0.2s"></div>
-  `).join("");
+    <div data-color="${c}" style="width:26px;height:26px;border-radius:50%;background:${c};cursor:pointer;
+      border:${state.form.color === c ? '3px solid var(--text)' : '3px solid transparent'};transition:all 0.2s;
+      box-shadow:${state.form.color === c ? '0 0 8px ' + c : 'none'}"></div>
+  `).join('');
       return `
-  <div style="margin-top:12px;background:#fff;border-radius:12px;padding:20px;
-    box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0">
-    <div style="display:flex;gap:10px;margin-bottom:10px">
+  <div class="g-card anim-card" style="margin-top:12px;padding:20px">
+    <div style="display:flex;gap:10px;margin-bottom:12px">
       <input id="form-name" value="${escHtml(state.form.name)}" placeholder="名前"
-        style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #e8e8e8;font-size:14px;outline:none" />
+        style="flex:1;padding:11px 14px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:14px;outline:none;transition:border-color 0.2s"
+        onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor=''" />
       <input id="form-birth" type="date" value="${state.form.birth}"
-        style="flex:1;padding:10px 12px;border-radius:8px;border:1px solid #e8e8e8;font-size:14px;outline:none" />
+        style="flex:1;padding:11px 14px;border-radius:10px;border:1px solid var(--input-border);background:var(--input-bg);color:var(--text);font-size:14px;outline:none;transition:border-color 0.2s"
+        onfocus="this.style.borderColor='#667eea'" onblur="this.style.borderColor=''" />
     </div>
     <div style="display:flex;gap:8px;margin-bottom:14px;align-items:center">
-      <span style="font-size:13px;color:#999">色:</span>
+      <span style="font-size:13px;color:var(--text3)">色:</span>
       ${colorDots}
     </div>
     <div style="display:flex;gap:8px">
-      <button id="btn-add-member" style="flex:1;padding:10px;border-radius:8px;background:#1a1a1a;color:#fff;
-        border:none;font-size:14px;cursor:pointer;font-weight:500">追加</button>
-      <button id="btn-cancel-add" style="padding:10px 16px;border-radius:8px;background:none;color:#999;
-        border:1px solid #e8e8e8;font-size:14px;cursor:pointer">閉じる</button>
+      <button id="btn-add-member" class="g-btn" style="flex:1;padding:11px;font-size:14px">追加</button>
+      <button id="btn-cancel-add" style="padding:11px 16px;border-radius:10px;background:none;color:var(--text2);
+        border:1px solid var(--card-border);font-size:14px;cursor:pointer;transition:all 0.2s"
+        onmouseover="this.style.borderColor='#667eea'" onmouseout="this.style.borderColor=''">閉じる</button>
     </div>
   </div>`;
     }
@@ -567,34 +748,33 @@
       const msgPad = state.mobile ? 14 : 20;
       const msgFontSz = state.mobile ? 15 : 17;
       const familyMsgHtml = `
-  <div id="family-msg-panel" style="background:#fff;border-radius:12px;padding:${msgPad}px;
-    margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0;
-    display:flex;align-items:center;gap:14px">
+  <div id="family-msg-panel" class="g-card" style="padding:${msgPad}px;
+    margin-bottom:16px;display:flex;align-items:center;gap:14px">
     <div style="flex:1;text-align:center">
-      <div style="font-size:11px;color:#bbb;margin-bottom:8px;letter-spacing:1px">今日の一言</div>
+      <div style="font-size:10px;color:var(--text3);margin-bottom:8px;letter-spacing:1.5px;text-transform:uppercase">✨ 今日の一言</div>
       <div id="family-msg-text" style="font-size:${msgFontSz}px;font-weight:400;
-        color:#333;line-height:1.7;letter-spacing:0.3px">${currentMsg}</div>
+        color:var(--text);line-height:1.7;letter-spacing:0.3px">${currentMsg}</div>
     </div>
-    <button onclick="nextFamilyMsg()" style="flex-shrink:0;background:none;border:1px solid #e8e8e8;
-      border-radius:50%;width:36px;height:36px;cursor:pointer;font-size:18px;color:#bbb;
-      display:flex;align-items:center;justify-content:center;transition:all 0.2s"
-      onmouseover="this.style.background='#f5f5f5';this.style.color='#888'"
-      onmouseout="this.style.background='none';this.style.color='#bbb'">↻</button>
+    <button onclick="nextFamilyMsg()" style="flex-shrink:0;background:var(--stat-bg);border:1px solid var(--card-border);
+      border-radius:50%;width:38px;height:38px;cursor:pointer;font-size:18px;color:var(--text3);
+      display:flex;align-items:center;justify-content:center;transition:all 0.25s"
+      onmouseover="this.style.transform='rotate(180deg)';this.style.color='#667eea'"
+      onmouseout="this.style.transform='';this.style.color=''">↻</button>
   </div>`;
 
       // 年ラベル HTML（5年ごと、1980年から）
       const yearLabelsHtml = [];
       for (let i = 0; i < totalYrs; i += 5) {
         const top = i * (cellSz + gap);
-        yearLabelsHtml.push(`<div style="position:absolute;top:${top}px;font-size:${state.mobile ? 9 : 10}px;color:#ccc;line-height:1;font-weight:300;right:4px">${GRID_START_YEAR + i}</div>`);
+        yearLabelsHtml.push(`<div style="position:absolute;top:${top}px;font-size:${state.mobile ? 9 : 10}px;color:var(--text3);line-height:1;font-weight:300;right:4px">${GRID_START_YEAR + i}</div>`);
       }
 
       // グリッドセル HTML
       const cellsHtml = gridData.map((c, i) => {
         const br = Math.max(cellSz * 0.15, 1);
         const outline = c.cur
-          ? "outline:2px solid #333;outline-offset:-1px;z-index:2;"
-          : (state.selCell === i ? "outline:1.5px solid #666;z-index:2;" : "");
+          ? "outline:2px solid var(--cur-outline);outline-offset:-1px;z-index:2;"
+          : (state.selCell === i ? "outline:1.5px solid var(--text2);z-index:2;" : "");
         return `<div data-i="${i}" style="width:${cellSz}px;height:${cellSz}px;border-radius:${br}px;background:${c.bg};${outline}position:relative;flex-shrink:0"></div>`;
       }).join("");
 
@@ -604,16 +784,16 @@
         return `
         <div style="display:flex;align-items:center;gap:4px">
           <button data-toggle="${i}" style="display:flex;align-items:center;gap:6px;cursor:pointer;
-            padding:5px 10px;border-radius:20px;font-size:13px;
-            background:${m.visible ? "#fff" : "#f0f0f0"};
-            box-shadow:${m.visible ? "0 1px 4px rgba(0,0,0,0.08)" : "none"};
-            border:${m.visible ? `1.5px solid ${m.color}` : "1.5px solid #ddd"};
-            opacity:${m.visible ? 1 : 0.5};transition:all 0.2s">
-            <div style="width:10px;height:10px;border-radius:50%;background:${m.visible ? m.color : "#ccc"}"></div>
-            <span style="color:${m.visible ? "#555" : "#aaa"};font-weight:400">${m.name}</span>
+            padding:6px 12px;border-radius:20px;font-size:13px;
+            background:${m.visible ? 'var(--card)' : 'var(--stat-bg)'};
+            box-shadow:${m.visible ? 'var(--card-shadow)' : 'none'};
+            border:${m.visible ? `2px solid ${m.color}` : '2px solid var(--card-border)'};
+            opacity:${m.visible ? 1 : 0.45};transition:all 0.25s">
+            <div style="width:10px;height:10px;border-radius:50%;background:${m.visible ? m.color : 'var(--text3)'};${m.visible ? 'box-shadow:0 0 6px ' + hexRgba(m.color, 0.5) : ''}"></div>
+            <span style="color:${m.visible ? 'var(--text)' : 'var(--text3)'};font-weight:${m.visible ? 500 : 400}">${m.name}</span>
           </button>
           <button data-facts="${i}" style="background:none;border:none;cursor:pointer;padding:2px 4px;
-            font-size:14px;color:${dotActive ? m.color : "#ddd"};font-weight:${dotActive ? 700 : 400};transition:color 0.2s">●</button>
+            font-size:14px;color:${dotActive ? m.color : 'var(--text3)'};font-weight:${dotActive ? 700 : 400};transition:color 0.2s">●</button>
         </div>`;
       }).join("");
 
@@ -621,60 +801,55 @@
 
       // Factsパネル HTML（スライダー付き）
       const factsHtml = `
-  <div style="background:#fff;border-radius:12px;padding:${state.mobile ? 14 : 18}px;
-    margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0">
-    <div style="font-size:14px;font-weight:500;color:${fm.color};margin-bottom:10px">${fm.name}の時間</div>
+  <div class="g-card" style="padding:${state.mobile ? 14 : 18}px;margin-bottom:16px">
+    <div style="font-size:14px;font-weight:600;color:${fm.color};margin-bottom:12px;display:flex;align-items:center;gap:6px">
+      <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${fm.color};box-shadow:0 0 8px ${hexRgba(fm.color, 0.5)}"></span>
+      ${fm.name}の時間
+    </div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
-      <div style="background:#fafafa;border-radius:8px;padding:10px 12px">
-        <div style="font-size:11px;color:#aaa;margin-bottom:3px">生きた週数</div>
-        <div data-stat="wks" style="font-size:${factsFontSz}px;font-weight:300;color:#1a1a1a">${wksLivedSlider.toLocaleString()}<span style="font-size:11px;color:#aaa"> 週</span></div>
+      <div style="background:var(--stat-bg);border-radius:10px;padding:12px 14px;transition:background 0.4s">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:0.5px">生きた週数</div>
+        <div data-stat="wks" style="font-size:${factsFontSz}px;font-weight:300;color:var(--text);font-feature-settings:'tnum'">${wksLivedSlider.toLocaleString()}<span style="font-size:11px;color:var(--text3)"> 週</span></div>
       </div>
-      <div style="background:#fafafa;border-radius:8px;padding:10px 12px">
-        <div style="font-size:11px;color:#aaa;margin-bottom:3px">人生の進捗 (${LIFESPAN}年基準)</div>
-        <div data-stat="life" style="font-size:${factsFontSz}px;font-weight:300;color:#1a1a1a">${lifePctSlider}<span style="font-size:11px;color:#aaa">%</span></div>
+      <div style="background:var(--stat-bg);border-radius:10px;padding:12px 14px;transition:background 0.4s">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:0.5px">人生の進捗</div>
+        <div data-stat="life" style="font-size:${factsFontSz}px;font-weight:300;color:var(--text);font-feature-settings:'tnum'">${lifePctSlider}<span style="font-size:11px;color:var(--text3)">%</span></div>
       </div>
-      <div style="background:#fafafa;border-radius:8px;padding:10px 12px">
-        <div style="font-size:11px;color:#aaa;margin-bottom:3px">残りの人生</div>
-        <div data-stat="rem" style="font-size:${factsFontSz}px;font-weight:300;color:#1a1a1a">${remPctSlider}<span style="font-size:11px;color:#aaa">%</span></div>
+      <div style="background:var(--stat-bg);border-radius:10px;padding:12px 14px;transition:background 0.4s">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:0.5px">残りの人生</div>
+        <div data-stat="rem" style="font-size:${factsFontSz}px;font-weight:300;color:var(--text);font-feature-settings:'tnum'">${remPctSlider}<span style="font-size:11px;color:var(--text3)">%</span></div>
       </div>
-      <div style="background:#fafafa;border-radius:8px;padding:10px 12px">
-        <div style="font-size:11px;color:#aaa;margin-bottom:3px">西暦元年からの経過割合</div>
-        <div data-stat="ad" style="font-size:${factsFontSz}px;font-weight:300;color:#1a1a1a">${adPct}<span style="font-size:11px;color:#aaa">%</span></div>
+      <div style="background:var(--stat-bg);border-radius:10px;padding:12px 14px;transition:background 0.4s">
+        <div style="font-size:10px;color:var(--text3);margin-bottom:4px;letter-spacing:0.5px">西暦元年からの経過</div>
+        <div data-stat="ad" style="font-size:${factsFontSz}px;font-weight:300;color:var(--text);font-feature-settings:'tnum'">${adPct}<span style="font-size:11px;color:var(--text3)">%</span></div>
       </div>
     </div>
-
-    <!-- モダンスライダー -->
     <div class="facts-slider-wrap">
       <div class="facts-slider-label">
         <span class="facts-slider-date" id="slider-date-label">${sliderDateStr}</span>
         <span class="facts-slider-hint">${isNow ? "◉ 現在" : "← ドラッグで時間移動"}</span>
       </div>
       <div class="facts-slider-track-wrap">
-        <div class="facts-slider-fill" id="slider-fill"
-          style="width:${sliderFillPct}%;background:${fm.color}"></div>
-        <input id="facts-range" type="range" min="0" max="${sliderMax}"
-          value="${sliderVal}"
-          style="color:${fm.color}"
-          oninput="onSliderInput(this.value)">
+        <div class="facts-slider-fill" id="slider-fill" style="width:${sliderFillPct}%;background:${fm.color}"></div>
+        <input id="facts-range" type="range" min="0" max="${sliderMax}" value="${sliderVal}" style="color:${fm.color}" oninput="onSliderInput(this.value)">
       </div>
       <div style="display:flex;justify-content:space-between;align-items:center;margin-top:6px">
-        <span style="font-size:10px;color:#ccc">誕生</span>
-        <button onclick="resetSlider()" style="font-size:10px;color:#aaa;background:none;border:1px solid #ddd;border-radius:6px;padding:2px 8px;cursor:pointer;transition:all 0.15s"
-          onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='none'">
+        <span style="font-size:10px;color:var(--text3)">誕生</span>
+        <button onclick="resetSlider()" style="font-size:10px;color:var(--text3);background:var(--stat-bg);border:1px solid var(--card-border);border-radius:8px;padding:3px 10px;cursor:pointer;transition:all 0.2s"
+          onmouseover="this.style.color='#667eea'" onmouseout="this.style.color=''">
           &#8635; 現在に戻す
         </button>
-        <span style="font-size:10px;color:#ccc">${fmLifespan}歳</span>
+        <span style="font-size:10px;color:var(--text3)">${fmLifespan}歳</span>
       </div>
-      <!-- スライダー時点の全員年齢パネル -->
       <div id="slider-age-panel" style="margin-top:12px;display:flex;flex-wrap:wrap;gap:6px 16px">
         ${state.members.map(m => {
         const age = ageAt(m.birth, sliderDate);
         const mLifespan = m.lifespan != null ? m.lifespan : LIFESPAN;
-        const gone = age && age.y >= mLifespan; // 寿命超え
+        const gone = age && age.y >= mLifespan;
         return `<div style="display:flex;align-items:center;gap:5px;font-size:12px">
             <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${m.color};flex-shrink:0"></span>
-            <span style="color:#555;font-weight:500">${m.name}</span>
-            <span style="color:${gone ? '#ddd' : age ? '#888' : '#bbb'}">${gone ? 'いない' : age ? `${age.y}<span style="font-size:10px;color:#aaa">歳</span>${age.m}<span style="font-size:10px;color:#aaa">ヶ月</span>` : '未誕生'}</span>
+            <span style="color:var(--text);font-weight:500">${m.name}</span>
+            <span style="color:${gone ? 'var(--text3)' : age ? 'var(--text2)' : 'var(--text3)'}">${gone ? 'いない' : age ? `${age.y}<span style="font-size:10px;color:var(--text3)">歳</span>${age.m}<span style="font-size:10px;color:var(--text3)">ヶ月</span>` : '未誕生'}</span>
           </div>`;
       }).join("")}
       </div>
@@ -683,10 +858,9 @@
 
       // セル選択情報パネル HTML
       const cellInfoHtml = cellInfo ? `
-  <div style="background:#fff;border-radius:12px;padding:${state.mobile ? 12 : 16}px;
-    margin-bottom:16px;box-shadow:0 1px 3px rgba(0,0,0,0.06);border:1px solid #f0f0f0;position:relative">
-    <button id="btn-close-cell" style="position:absolute;top:8px;right:12px;background:none;border:none;color:#ccc;font-size:16px;cursor:pointer">×</button>
-    <div style="font-size:13px;color:#aaa;margin-bottom:8px">${fmtDate(cellInfo.wd)}の週 ${cellInfo.past ? "" : "（未来）"}</div>
+  <div class="g-card" style="padding:${state.mobile ? 12 : 16}px;margin-bottom:16px;position:relative">
+    <button id="btn-close-cell" style="position:absolute;top:8px;right:12px;background:none;border:none;color:var(--text3);font-size:16px;cursor:pointer;transition:color 0.2s" onmouseover="this.style.color='#e74c3c'" onmouseout="this.style.color=''">×</button>
+    <div style="font-size:13px;color:var(--text3);margin-bottom:8px">${fmtDate(cellInfo.wd)}の週 ${cellInfo.past ? '' : '（未来）'}</div>
     <div style="display:flex;flex-direction:column;gap:5px">
       ${state.members.map(m => {
         const age = ageAt(m.birth, cellInfo.wd);
@@ -694,49 +868,46 @@
         const gone = age && age.y >= mLifespan;
         return `
         <div style="display:flex;align-items:center;gap:8px;font-size:14px">
-          <div style="width:8px;height:8px;border-radius:50%;background:${m.color}"></div>
-          <span style="color:#555;font-weight:500;min-width:40px">${m.name}</span>
-          <span style="color:${gone ? '#ddd' : age ? '#888' : '#ccc'}">${gone ? 'いない' : age ? `${age.y}歳${age.m}ヶ月` : 'まだ生まれていません'}</span>
+          <div style="width:8px;height:8px;border-radius:50%;background:${m.color};box-shadow:0 0 4px ${hexRgba(m.color, 0.4)}"></div>
+          <span style="color:var(--text);font-weight:500;min-width:40px">${m.name}</span>
+          <span style="color:${gone ? 'var(--text3)' : age ? 'var(--text2)' : 'var(--text3)'}">${gone ? 'いない' : age ? `${age.y}歳${age.m}ヶ月` : 'まだ生まれていません'}</span>
         </div>`;
-      }).join("")}
+      }).join('')}
     </div>
-  </div>` : "";
+  </div>` : '';
 
-      const padCss = state.mobile ? "12px 8px" : "24px 32px";
+      const padCss = state.mobile ? '12px 8px' : '24px 32px';
       const h1sz = state.mobile ? 20 : 24;
+      const darkIcon = state.dark ? '☀️' : '🌙';
 
       return `
-  <div id="grid-container" style="min-height:100vh;background:#fafafa;padding:${padCss}">
+  <div id="grid-container" class="anim-page" style="min-height:100vh;padding:${padCss}">
     <div style="max-width:900px;margin:0 auto">
-      <!-- ヘッダー -->
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
-        <button onclick="goBack()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#999;padding:4px 8px">&#8592;</button>
-        <h1 style="font-size:${h1sz}px;font-weight:300;color:#1a1a1a;letter-spacing:-0.5px">Life in weeks</h1>
+        <button onclick="goBack()" style="background:var(--stat-bg);border:1px solid var(--card-border);border-radius:10px;font-size:18px;cursor:pointer;color:var(--text2);padding:6px 12px;transition:all 0.2s"
+          onmouseover="this.style.transform='translateX(-2px)'" onmouseout="this.style.transform=''">←</button>
+        <h1 style="flex:1;font-size:${h1sz}px;font-weight:300;color:var(--text);letter-spacing:-0.5px">
+          <span style="background:linear-gradient(135deg,#667eea,#764ba2);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Life</span> in weeks
+        </h1>
+        <button class="dark-toggle" onclick="toggleDark()">${darkIcon}</button>
       </div>
-      <!-- レジェンド -->
       <div style="display:flex;gap:${state.mobile ? 6 : 10}px;margin-bottom:16px;flex-wrap:wrap">
         ${legendHtml}
       </div>
-      <!-- Factsパネル -->
       ${factsHtml}
-      <!-- 家族メッセージパネル -->
       ${familyMsgHtml}
-      <!-- 選択セル情報 -->
       ${cellInfoHtml}
-      <!-- グリッド -->
       <div style="overflow-x:auto;padding-bottom:20px">
         <div style="display:flex;min-width:${gridW + labelW + 8}px">
-          <!-- 年ラベル（5年ごと） -->
           <div style="width:${labelW}px;flex-shrink:0;position:relative">
-            ${yearLabelsHtml.join("")}
+            ${yearLabelsHtml.join('')}
           </div>
-          <!-- セルグリッド -->
           <div id="week-grid" style="display:grid;grid-template-columns:repeat(52,${cellSz}px);gap:${gap}px;cursor:pointer">
             ${cellsHtml}
           </div>
         </div>
       </div>
-      <div style="text-align:center;color:#ccc;font-size:12px;margin-top:4px;font-weight:300">
+      <div style="text-align:center;color:var(--text3);font-size:12px;margin-top:4px;font-weight:300">
         グリッドをタップすると、その週の各メンバーの年齢が表示されます
       </div>
     </div>
@@ -771,13 +942,23 @@
       const el = document.getElementById("family-msg-text");
       if (el) {
         // フェードアニメーション付きで切り替え
-        el.style.transition = "opacity 0.25s";
-        el.style.opacity = "0";
+        el.style.transition = 'opacity 0.3s, transform 0.3s';
+        el.style.opacity = '0';
+        el.style.transform = 'translateY(6px)';
         setTimeout(() => {
           el.textContent = FAMILY_MESSAGES[state.familyMsgIdx];
-          el.style.opacity = "1";
-        }, 250);
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        }, 300);
       }
+    }
+
+    /** ダークモード切替 */
+    function toggleDark() {
+      state.dark = !state.dark;
+      document.body.classList.toggle('dark', state.dark);
+      localStorage.setItem('liw-dark', state.dark ? '1' : '0');
+      render();
     }
 
     // =============================================
@@ -832,7 +1013,7 @@
 
       // DOM上の4つの数値ボックスを直接更新（data-stat属性で識別）
       // innerHTMLで単位のspanタグも込みで更新する
-      const unitSm = 'style="font-size:11px;color:#aaa"';
+      const unitSm = 'style="font-size:11px;color:var(--text3)"';
       const boxes = document.querySelectorAll("[data-stat]");
       boxes.forEach(box => {
         const sz = box.style.fontSize; // 既存のfont-sizeをそのまま流用
@@ -852,9 +1033,9 @@
           const gone = age && age.y >= mLifespan;
           return `<div style="display:flex;align-items:center;gap:5px;font-size:12px">
             <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${m.color};flex-shrink:0"></span>
-            <span style="color:#555;font-weight:500">${m.name}</span>
-            <span style="color:${gone ? '#ddd' : age ? '#888' : '#bbb'}">${gone ? 'いない' : age
-              ? `${age.y}<span style="font-size:10px;color:#aaa">歳</span>${age.m}<span style="font-size:10px;color:#aaa">ヶ月</span>`
+            <span style="color:var(--text);font-weight:500">${m.name}</span>
+            <span style="color:${gone ? 'var(--text3)' : age ? 'var(--text2)' : 'var(--text3)'}">${gone ? 'いない' : age
+              ? `${age.y}<span style="font-size:10px;color:var(--text3)">歳</span>${age.m}<span style="font-size:10px;color:var(--text3)">ヶ月</span>`
               : '未誕生'}</span>
           </div>`;
         }).join("");
@@ -874,7 +1055,7 @@
       // 新しい位置に黒枠を表示
       const newCell = document.querySelector(`[data-i="${sliderGridIdx}"]`);
       if (newCell) {
-        newCell.style.outline = "2px solid #1a1a1a";
+        newCell.style.outline = '2px solid var(--cur-outline)';
         newCell.style.outlineOffset = "-1px";
         newCell.style.zIndex = "3";
         newCell.setAttribute("data-slider-cur", "1");
